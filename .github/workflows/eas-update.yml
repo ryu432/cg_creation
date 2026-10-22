@@ -41,11 +41,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Expo 上のプロジェクトを作成（初回）またはリンクし、EAS Update の設定を app.json に書き込む
-      - name: Link EAS project
-        run: |
-          eas init --force --non-interactive
-          eas update:configure --non-interactive
-
       - name: Publish update
         run: eas update --auto --non-interactive
