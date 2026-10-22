@@ -1,0 +1,51 @@
+# mobile/ に変更をプッシュすると、EAS Update で Expo に公開する。
+# スマホの Expo Go から最新版を開いて確認できる。
+name: EAS Update
+
+on:
+  push:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/eas-update.yml'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Check EXPO_TOKEN
+        working-directory: .
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "EXPO_TOKEN が未登録です。Settings > Secrets and variables > Actions で登録してください。"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Expo 上のプロジェクトを作成（初回）またはリンクし、EAS Update の設定を app.json に書き込む
+      - name: Link EAS project
+        run: |
+          eas init --force --non-interactive
+          eas update:configure --non-interactive
+
+      - name: Publish update
+        run: eas update --auto --non-interactive
