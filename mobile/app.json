@@ -31,6 +31,10 @@
       "eas": {
         "projectId": "932fa1a1-c275-46da-8ffb-4da0012ac13b"
       }
-    }
+    },
+    "scheme": "plano",
+    "plugins": [
+      "expo-router"
+    ]
   }
 }
