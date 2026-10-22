@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
+import { Chip } from '@/components/Chip';
 import { useTheme } from '@/constants/theme';
 import { addDays, formatDueDate, today } from '@/lib/date';
 import { useTasks } from '@/lib/TaskStore';
@@ -10,7 +11,7 @@ import { useTasks } from '@/lib/TaskStore';
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
-  const { tasks, updateTask, toggleDone, removeTask } = useTasks();
+  const { tasks, projects, updateTask, toggleDone, removeTask } = useTasks();
   const task = tasks.find((t) => t.id === id);
   const [title, setTitle] = useState(task?.title ?? '');
 
@@ -74,24 +75,38 @@ export default function TaskDetailScreen() {
       <View style={styles.section}>
         <Text style={[styles.label, { color: theme.subText }]}>期限</Text>
         <View style={styles.chips}>
-          {dueOptions.map((option) => {
-            const selected = task.dueDate === option.value;
-            return (
-              <Pressable
-                key={option.label}
-                onPress={() => updateTask(task.id, { dueDate: option.value })}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: selected ? theme.primary : theme.surface,
-                    borderColor: selected ? theme.primary : theme.border,
-                  },
-                ]}
-              >
-                <Text style={{ color: selected ? theme.onPrimary : theme.text }}>{option.label}</Text>
-              </Pressable>
-            );
-          })}
+          {dueOptions.map((option) => (
+            <Chip
+              key={option.label}
+              label={option.label}
+              selected={task.dueDate === option.value}
+              onPress={() => updateTask(task.id, { dueDate: option.value })}
+            />
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.label, { color: theme.subText }]}>プロジェクト</Text>
+        <View style={styles.chips}>
+          <Chip
+            label="なし"
+            selected={task.projectId === null}
+            onPress={() => updateTask(task.id, { projectId: null })}
+          />
+          {projects.map((p) => (
+            <Chip
+              key={p.id}
+              label={p.name}
+              dotColor={p.color}
+              selected={task.projectId === p.id}
+              onPress={() => updateTask(task.id, { projectId: p.id })}
+            />
+          ))}
+          <Chip
+            label="＋ 新規"
+            onPress={() => router.push({ pathname: '/project/edit', params: { assignTo: task.id } })}
+          />
         </View>
       </View>
 
@@ -153,12 +168,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: 1,
   },
   card: {
     borderRadius: 16,

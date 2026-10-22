@@ -9,7 +9,8 @@ import { useTasks } from '@/lib/TaskStore';
 
 export function TaskItem({ task }: { task: Task }) {
   const theme = useTheme();
-  const { toggleDone } = useTasks();
+  const { toggleDone, projects } = useTasks();
+  const project = task.projectId ? projects.find((p) => p.id === task.projectId) : undefined;
   const date = today();
   const done = task.status === 'done';
   const overdue = isOverdue(task, date);
@@ -41,9 +42,17 @@ export function TaskItem({ task }: { task: Task }) {
         >
           {task.title}
         </Text>
-        {(task.dueDate || planned) && !done && (
+        {(project || ((task.dueDate || planned) && !done)) && (
           <View style={styles.meta}>
-            {task.dueDate && (
+            {project && (
+              <View style={styles.project}>
+                <View style={[styles.dot, { backgroundColor: project.color }]} />
+                <Text style={[styles.metaText, { color: theme.subText }]} numberOfLines={1}>
+                  {project.name}
+                </Text>
+              </View>
+            )}
+            {task.dueDate && !done && (
               <Text style={[styles.metaText, { color: overdue ? theme.danger : theme.subText }]}>
                 <Ionicons name="calendar-outline" size={12} /> {formatDueDate(task.dueDate)}
                 {overdue ? '（期限切れ）' : ''}
@@ -83,7 +92,19 @@ const styles = StyleSheet.create({
   },
   meta: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
+  },
+  project: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: 140,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   metaText: {
     fontSize: 12,

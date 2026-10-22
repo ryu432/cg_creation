@@ -1,4 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import { ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -7,7 +9,7 @@ import { useTasks } from '@/lib/TaskStore';
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const { tasks, clearCompleted, clearAll } = useTasks();
+  const { tasks, projects, clearCompleted, clearAll } = useTasks();
   const todoCount = tasks.filter((t) => t.status === 'todo').length;
   const doneCount = tasks.length - todoCount;
 
@@ -19,7 +21,7 @@ export default function SettingsScreen() {
   };
 
   const confirmClearAll = () => {
-    Alert.alert('すべてのデータを削除', 'すべてのタスクを削除します。元に戻せません。', [
+    Alert.alert('すべてのデータを削除', 'すべてのタスクとプロジェクトを削除します。元に戻せません。', [
       { text: 'キャンセル', style: 'cancel' },
       { text: 'すべて削除', style: 'destructive', onPress: clearAll },
     ]);
@@ -30,6 +32,30 @@ export default function SettingsScreen() {
       <Section title="タスク">
         <Row label="未完了" value={`${todoCount}件`} />
         <Row label="完了" value={`${doneCount}件`} />
+      </Section>
+
+      <Section title="プロジェクト">
+        {projects.map((p) => (
+          <Pressable
+            key={p.id}
+            onPress={() => router.push({ pathname: '/project/edit', params: { id: p.id } })}
+            style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <View style={styles.projectName}>
+              <View style={[styles.dot, { backgroundColor: p.color }]} />
+              <Text style={[styles.label, { color: theme.text }]} numberOfLines={1}>
+                {p.name}
+              </Text>
+            </View>
+            <View style={styles.projectName}>
+              <Text style={[styles.value, { color: theme.subText }]}>
+                {tasks.filter((t) => t.projectId === p.id && t.status === 'todo').length}件
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.subText} />
+            </View>
+          </Pressable>
+        ))}
+        <ActionRow label="＋ プロジェクトを追加" onPress={() => router.push('/project/edit')} />
       </Section>
 
       <Section title="データ">
@@ -108,6 +134,17 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 16,
+  },
+  projectName: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   note: {
     fontSize: 13,
