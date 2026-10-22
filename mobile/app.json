@@ -35,6 +35,10 @@
     "scheme": "plano",
     "plugins": [
       "expo-router"
+    ],
+    "platforms": [
+      "ios",
+      "android"
     ]
   }
 }
