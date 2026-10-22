@@ -7,7 +7,8 @@ import { formatDueDate, today } from '@/lib/date';
 import { isOverdue, Task } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
-export function TaskItem({ task }: { task: Task }) {
+/** note: タスク名の下に出す補足（「今日」画面での AI の提案理由など） */
+export function TaskItem({ task, note }: { task: Task; note?: string }) {
   const theme = useTheme();
   const { toggleDone, projects } = useTasks();
   const project = task.projectId ? projects.find((p) => p.id === task.projectId) : undefined;
@@ -65,6 +66,7 @@ export function TaskItem({ task }: { task: Task }) {
             )}
           </View>
         )}
+        {note && !done && <Text style={[styles.note, { color: theme.subText }]}>{note}</Text>}
       </View>
     </Pressable>
   );
@@ -108,5 +110,9 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
+  },
+  note: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

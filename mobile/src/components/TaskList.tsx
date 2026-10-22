@@ -10,16 +10,17 @@ type Props = {
   tasks: Task[];
   header?: ReactElement;
   emptyMessage: string;
+  noteFor?: (task: Task) => string | undefined;
 };
 
-export function TaskList({ tasks, header, emptyMessage }: Props) {
+export function TaskList({ tasks, header, emptyMessage, noteFor }: Props) {
   const theme = useTheme();
 
   return (
     <FlatList
       data={tasks}
       keyExtractor={(t) => t.id}
-      renderItem={({ item }) => <TaskItem task={item} />}
+      renderItem={({ item }) => <TaskItem task={item} note={noteFor?.(item)} />}
       ListHeaderComponent={header}
       ListEmptyComponent={
         <View style={styles.empty}>

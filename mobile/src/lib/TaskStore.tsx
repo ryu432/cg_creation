@@ -1,10 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { DailyPlan, PlanUsage } from './plan';
 import { createProject, createTask, NewTask, normalizeTask, Project, Task } from './tasks';
 
 const TASKS_KEY = 'plano.tasks.v1';
 const PROJECTS_KEY = 'plano.projects.v1';
+const PLAN_KEY = 'plano.plan.v1';
+const PLAN_USAGE_KEY = 'plano.planUsage.v1';
 
 type TaskStore = {
   tasks: Task[];
@@ -19,6 +22,11 @@ type TaskStore = {
   addProject: (name: string, color: string) => Project | null;
   updateProject: (id: string, changes: Partial<Pick<Project, 'name' | 'color'>>) => void;
   removeProject: (id: string) => void;
+  /** 最後に採用したプラン */
+  plan: DailyPlan | null;
+  planUsage: PlanUsage | null;
+  acceptPlan: (plan: DailyPlan) => void;
+  recordPlanRequest: (date: string) => void;
 };
 
 const TaskStoreContext = createContext<TaskStore | null>(null);
@@ -27,13 +35,17 @@ const TaskStoreContext = createContext<TaskStore | null>(null);
 export function TaskStoreProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [plan, setPlan] = useState<DailyPlan | null>(null);
+  const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet([TASKS_KEY, PROJECTS_KEY])
-      .then(([[, tasksJson], [, projectsJson]]) => {
+    AsyncStorage.multiGet([TASKS_KEY, PROJECTS_KEY, PLAN_KEY, PLAN_USAGE_KEY])
+      .then(([[, tasksJson], [, projectsJson], [, planJson], [, usageJson]]) => {
         if (tasksJson) setTasks((JSON.parse(tasksJson) as Task[]).map(normalizeTask));
         if (projectsJson) setProjects(JSON.parse(projectsJson));
+        if (planJson) setPlan(JSON.parse(planJson));
+        if (usageJson) setPlanUsage(JSON.parse(usageJson));
       })
       .catch((e) => console.warn('データの読み込みに失敗しました', e))
       .finally(() => setLoaded(true));
@@ -53,6 +65,18 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       console.warn('プロジェクトの保存に失敗しました', e),
     );
   }, [projects, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    AsyncStorage.setItem(PLAN_KEY, JSON.stringify(plan)).catch((e) => console.warn('プランの保存に失敗しました', e));
+  }, [plan, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    AsyncStorage.setItem(PLAN_USAGE_KEY, JSON.stringify(planUsage)).catch((e) =>
+      console.warn('利用回数の保存に失敗しました', e),
+    );
+  }, [planUsage, loaded]);
 
   const addTask = useCallback((input: NewTask) => {
     if (!input.title.trim()) return;
@@ -86,6 +110,7 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
   const clearAll = useCallback(() => {
     setTasks([]);
     setProjects([]);
+    setPlan(null);
   }, []);
 
   const addProject = useCallback((name: string, color: string) => {
@@ -105,6 +130,19 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
     setTasks((prev) => prev.map((t) => (t.projectId === id ? { ...t, projectId: null } : t)));
   }, []);
 
+  // 採用したプランのタスクを「今日やる」にする。手動で「今日やる」にしたタスクはそのまま残す
+  const acceptPlan = useCallback((accepted: DailyPlan) => {
+    const ids = new Set(accepted.items.map((i) => i.taskId));
+    setPlan(accepted);
+    setTasks((prev) =>
+      prev.map((t) => (ids.has(t.id) && t.status === 'todo' ? { ...t, plannedDate: accepted.date } : t)),
+    );
+  }, []);
+
+  const recordPlanRequest = useCallback((date: string) => {
+    setPlanUsage((prev) => (prev?.date === date ? { date, count: prev.count + 1 } : { date, count: 1 }));
+  }, []);
+
   const value = useMemo(
     () => ({
       tasks,
@@ -119,6 +157,10 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       addProject,
       updateProject,
       removeProject,
+      plan,
+      planUsage,
+      acceptPlan,
+      recordPlanRequest,
     }),
     [
       tasks,
@@ -133,6 +175,10 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       addProject,
       updateProject,
       removeProject,
+      plan,
+      planUsage,
+      acceptPlan,
+      recordPlanRequest,
     ],
   );
 
