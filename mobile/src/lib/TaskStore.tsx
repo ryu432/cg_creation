@@ -212,12 +212,17 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
     setTasks((prev) => prev.map((t) => (t.projectId === id ? { ...t, projectId: null } : t)));
   }, []);
 
-  // 採用したプランのタスクを「今日やる」にする。手動で「今日やる」にしたタスクはそのまま残す
+  // 採用したプランのタスクを「今日やる」にし、プランに入っていない「今日やる」は外す（タスク自体は残る）
   const acceptPlan = useCallback((accepted: DailyPlan) => {
     const ids = new Set(accepted.items.map((i) => i.taskId));
     setPlan(accepted);
     setTasks((prev) =>
-      prev.map((t) => (ids.has(t.id) && t.status === 'todo' ? { ...t, plannedDate: accepted.date } : t)),
+      prev.map((t) => {
+        if (t.status !== 'todo') return t;
+        if (ids.has(t.id)) return { ...t, plannedDate: accepted.date };
+        if (t.plannedDate === accepted.date) return { ...t, plannedDate: null };
+        return t;
+      }),
     );
   }, []);
 

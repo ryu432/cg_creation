@@ -67,6 +67,9 @@ export default function PlanScreen() {
 
   if (proposal) {
     const accepted = proposal.items.filter((i) => i.accepted);
+    const acceptedIds = new Set(accepted.map((i) => i.taskId));
+    // 確定するとプランから外れる「今日やる」の件数
+    const dropped = tasks.filter((t) => t.status === 'todo' && t.plannedDate === date && !acceptedIds.has(t.id)).length;
     const total = accepted.reduce((sum, i) => sum + i.estimateMinutes, 0);
     const over = total > availableMinutes;
 
@@ -121,6 +124,11 @@ export default function PlanScreen() {
           {over ? '（少し多めです）' : ''}
         </Text>
 
+        {dropped > 0 && (
+          <Text style={[styles.hint, { color: theme.subText }]}>
+            このプランにない「今日やる」{dropped}件は、「今日やる」から外れます（タスクは残ります）
+          </Text>
+        )}
         <Pressable
           onPress={start}
           disabled={accepted.length === 0}
