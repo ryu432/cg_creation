@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
-import { ReactElement, useEffect, useState } from 'react';
+import { router, useNavigation } from 'expo-router';
+import { ReactElement, useEffect, useLayoutEffect, useState } from 'react';
 import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
@@ -23,6 +23,35 @@ export function TaskList({ tasks, header, emptyMessage, noteFor, addParams }: Pr
   const theme = useTheme();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const selecting = selected.size > 0;
+  const navigation = useNavigation();
+  const clearSelection = () => setSelected(new Set());
+  const allSelected = selecting && selected.size === tasks.length;
+
+  // 選択モードの間は、画面上部を「← N件を選択中 … すべて選択」にする（iPhone でも戻るボタンで解除できるように）
+  useLayoutEffect(() => {
+    navigation.setOptions(
+      selecting
+        ? {
+            headerTitle: `${selected.size}件を選択中`,
+            headerLeft: () => (
+              <Pressable onPress={clearSelection} hitSlop={12} style={styles.headerButton} accessibilityLabel="選択を解除">
+                <Ionicons name="arrow-back" size={24} color={theme.text} />
+              </Pressable>
+            ),
+            headerRight: () =>
+              allSelected ? null : (
+                <Pressable
+                  onPress={() => setSelected(new Set(tasks.map((t) => t.id)))}
+                  hitSlop={12}
+                  style={styles.headerButton}
+                >
+                  <Text style={[styles.headerLink, { color: theme.primary }]}>すべて選択</Text>
+                </Pressable>
+              ),
+          }
+        : { headerTitle: undefined, headerLeft: undefined, headerRight: undefined },
+    );
+  }, [navigation, selecting, selected.size, allSelected, tasks, theme]);
 
   // 一覧から消えたタスク（削除・別画面での変更）は選択から外す
   useEffect(() => {
@@ -37,7 +66,7 @@ export function TaskList({ tasks, header, emptyMessage, noteFor, addParams }: Pr
   useEffect(() => {
     if (!selecting) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setSelected(new Set());
+      clearSelection();
       return true;
     });
     return () => sub.remove();
@@ -77,12 +106,7 @@ export function TaskList({ tasks, header, emptyMessage, noteFor, addParams }: Pr
       />
 
       {selecting ? (
-        <SelectionBar
-          ids={[...selected]}
-          allSelected={selected.size === tasks.length}
-          onSelectAll={() => setSelected(new Set(tasks.map((t) => t.id)))}
-          onDone={() => setSelected(new Set())}
-        />
+        <SelectionBar ids={[...selected]} onDone={clearSelection} />
       ) : (
         addParams && (
           <Pressable
@@ -116,6 +140,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  headerButton: {
+    paddingHorizontal: 16,
+  },
+  headerLink: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   fab: {
     position: 'absolute',

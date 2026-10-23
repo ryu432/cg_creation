@@ -10,14 +10,12 @@ import { Chip } from './Chip';
 
 type Props = {
   ids: string[];
-  allSelected: boolean;
-  onSelectAll: () => void;
-  /** 操作が終わったとき・キャンセルしたとき（選択モードを抜ける） */
+  /** 操作が終わったとき（選択モードを抜ける） */
   onDone: () => void;
 };
 
-// 選択モードの下に出る操作バー：まとめて完了・プロジェクトへ移動・削除
-export function SelectionBar({ ids, allSelected, onSelectAll, onDone }: Props) {
+// 選択モードの下に出る操作バー：まとめて完了・プロジェクトへ移動・削除（解除は画面上部の ← から）
+export function SelectionBar({ ids, onDone }: Props) {
   const theme = useTheme();
   const { projects, completeTasks, updateTasks, removeTasks } = useTasks();
   const [moving, setMoving] = useState(false);
@@ -41,20 +39,6 @@ export function SelectionBar({ ids, allSelected, onSelectAll, onDone }: Props) {
 
   return (
     <View style={[styles.bar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      <View style={styles.top}>
-        <Text style={[styles.count, { color: theme.text }]}>{ids.length}件を選択中</Text>
-        <View style={styles.topActions}>
-          {!allSelected && (
-            <Pressable onPress={onSelectAll} hitSlop={8}>
-              <Text style={[styles.link, { color: theme.primary }]}>すべて選択</Text>
-            </Pressable>
-          )}
-          <Pressable onPress={onDone} hitSlop={8}>
-            <Text style={[styles.link, { color: theme.subText }]}>キャンセル</Text>
-          </Pressable>
-        </View>
-      </View>
-
       {moving && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projects}>
           <Chip label="プロジェクトなし" onPress={() => moveTo(null)} />
@@ -115,22 +99,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
-  },
-  top: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  count: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  topActions: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  link: {
-    fontSize: 14,
   },
   projects: {
     gap: 8,
