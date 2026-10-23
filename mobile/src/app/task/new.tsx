@@ -18,6 +18,7 @@ export default function TaskNewScreen() {
     estimateMinutes: null,
     projectId: projects.some((p) => p.id === params.projectId) ? params.projectId! : null,
     plannedToday: params.today === '1',
+    allowSplit: true,
   }));
 
   return (
@@ -30,6 +31,7 @@ export default function TaskNewScreen() {
           dueDate: draft.dueDate,
           estimateMinutes: draft.estimateMinutes,
           projectId: draft.projectId,
+          allowSplit: draft.allowSplit,
           plannedDate: draft.plannedToday ? date : null,
         })
       }

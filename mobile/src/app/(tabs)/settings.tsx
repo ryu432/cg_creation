@@ -4,23 +4,28 @@ import { router } from 'expo-router';
 import { ReactNode, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { Chip } from '@/components/Chip';
 import { openContact } from '@/components/HeaderActions';
 import { TimeEditor } from '@/components/TimeEditor';
 import { useTheme } from '@/constants/theme';
 import { exportBackup } from '@/lib/backup';
+import { chunkOptions, SplitSettings, splitThresholdOptions } from '@/lib/plan';
 import { ensureNotificationPermission, formatTime, notificationsSupported, ReminderSettings } from '@/lib/notifications';
 import { useTasks } from '@/lib/TaskStore';
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const { tasks, projects, clearCompleted, clearAll, reminders, setReminders } = useTasks();
+  const { tasks, projects, clearCompleted, clearAll, reminders, setReminders, planSettings, setPlanSettings } = useTasks();
 
   // スマホの共有機能で送る（メモ・LINE・Google ドライブなど）。題名は本文に混ざることがあるので付けない
   const exportData = () => {
-    Share.share({ message: exportBackup({ tasks, projects, reminders }) }).catch((e) =>
+    Share.share({ message: exportBackup({ tasks, projects, reminders, planSettings }) }).catch((e) =>
       console.warn('書き出しに失敗しました', e),
     );
   };
+  const split = planSettings.split;
+  const setSplit = (changes: Partial<SplitSettings>) =>
+    setPlanSettings({ ...planSettings, split: { ...split, ...changes } });
   const [editingTime, setEditingTime] = useState<keyof ReminderSettings | null>(null);
   const canNotify = notificationsSupported();
 
@@ -56,6 +61,50 @@ export default function SettingsScreen() {
       <Section title="タスク">
         <Row label="未完了" value={`${todoCount}件`} />
         <Row label="完了" value={`${doneCount}件`} />
+      </Section>
+
+      <Section title="プラン">
+        <View style={styles.row}>
+          <View style={styles.reminderLabel}>
+            <Text style={[styles.label, { color: theme.text }]}>大きいタスクを区切って入れる</Text>
+            <Text style={[styles.sub, { color: theme.subText }]}>今日の時間に入らないとき「30分だけ」のように進める</Text>
+          </View>
+          <Switch
+            value={split.enabled}
+            onValueChange={(enabled) => setSplit({ enabled })}
+            trackColor={{ true: theme.primary, false: theme.border }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+        {split.enabled && (
+          <View style={styles.options}>
+            <Text style={[styles.sub, { color: theme.subText }]}>区切る対象（見積もり時間）</Text>
+            <View style={styles.chips}>
+              {splitThresholdOptions.map((o) => (
+                <Chip
+                  key={o.minutes}
+                  label={o.label}
+                  selected={split.minTaskMinutes === o.minutes}
+                  onPress={() => setSplit({ minTaskMinutes: o.minutes })}
+                />
+              ))}
+            </View>
+            <Text style={[styles.sub, { color: theme.subText }]}>1回に進める時間</Text>
+            <View style={styles.chips}>
+              {chunkOptions.map((o) => (
+                <Chip
+                  key={o.minutes}
+                  label={o.label}
+                  selected={split.chunkMinutes === o.minutes}
+                  onPress={() => setSplit({ chunkMinutes: o.minutes })}
+                />
+              ))}
+            </View>
+            <Text style={[styles.sub, { color: theme.subText }]}>
+              期限切れ・今日が期限のもの、見積もりがないもの、「区切らない」にしたタスクは区切りません。区切るのは1日2件までです。
+            </Text>
+          </View>
+        )}
       </Section>
 
       <Section title="通知">
@@ -218,6 +267,15 @@ const styles = StyleSheet.create({
   },
   sub: {
     fontSize: 12,
+  },
+  options: {
+    gap: 8,
+    paddingBottom: 14,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   notice: {
     lineHeight: 18,

@@ -6,14 +6,14 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { Chip } from '@/components/Chip';
 import { useTheme } from '@/constants/theme';
 import { today } from '@/lib/date';
-import { availableTimeOptions, Energy, energyOptions, formatMinutes, getPlanner, PlanError, PlanItem } from '@/lib/plan';
+import { availableTimeOptions, Energy, energyOptions, formatMinutes, formatPlanItemTime, getPlanner, PlanError, PlanItem } from '@/lib/plan';
 import { useTasks } from '@/lib/TaskStore';
 
 type Proposal = { comment: string; items: (PlanItem & { accepted: boolean })[] };
 
 export default function PlanScreen() {
   const theme = useTheme();
-  const { tasks, projects, plan, planUsage, acceptPlan, recordPlanRequest } = useTasks();
+  const { tasks, projects, plan, planUsage, acceptPlan, recordPlanRequest, planSettings } = useTasks();
   const date = today();
   const todoCount = tasks.filter((t) => t.status === 'todo').length;
   const planner = getPlanner();
@@ -35,7 +35,7 @@ export default function PlanScreen() {
     setLoading(true);
     setError(null);
     try {
-      const result = await planner.propose({ date, availableMinutes, energy, tasks, projects });
+      const result = await planner.propose({ date, availableMinutes, energy, tasks, projects, split: planSettings.split });
       if (planner.dailyLimit !== null) recordPlanRequest(date);
       setProposal({ comment: result.comment, items: result.items.map((i) => ({ ...i, accepted: true })) });
     } catch (e) {
@@ -104,8 +104,7 @@ export default function PlanScreen() {
                     {index + 1}. {task?.title ?? '（削除されたタスク）'}
                   </Text>
                   <Text style={[styles.itemMeta, { color: theme.subText }]}>
-                    約{formatMinutes(item.estimateMinutes)}
-                    {item.estimateIsDefault ? '（仮）' : ''}
+                    {formatPlanItemTime(item)}
                     {project ? `・${project.name}` : ''}
                   </Text>
                   {item.reason !== '' && (

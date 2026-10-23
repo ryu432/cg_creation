@@ -28,7 +28,36 @@ export type PlanItem = {
   reason: string;
   /** タスクに見積もり時間がなく、仮の時間で計算したとき true */
   estimateIsDefault?: boolean;
+  /** 大きいタスクを区切って入れたときの、タスク全体の見積もり時間（estimateMinutes は今日進める分） */
+  totalMinutes?: number;
 };
+
+/** 大きいタスクを区切ってプランに入れるときの条件（設定画面で変えられる） */
+export type SplitSettings = {
+  enabled: boolean;
+  /** 見積もりがこの長さ以上のタスクだけ区切る（分） */
+  minTaskMinutes: number;
+  /** 1回に進める時間（分） */
+  chunkMinutes: number;
+};
+
+export const defaultSplitSettings: SplitSettings = { enabled: true, minTaskMinutes: 60, chunkMinutes: 30 };
+
+export const splitThresholdOptions = [
+  { label: '1時間以上', minutes: 60 },
+  { label: '2時間以上', minutes: 120 },
+];
+
+export const chunkOptions = [
+  { label: '30分', minutes: 30 },
+  { label: '1時間', minutes: 60 },
+];
+
+/** プランの見積もり時間の表示（区切ったときは「30分だけ（全体 約4時間）」） */
+export function formatPlanItemTime(item: PlanItem): string {
+  if (item.totalMinutes) return `${formatMinutes(item.estimateMinutes)}だけ（全体 約${formatMinutes(item.totalMinutes)}）`;
+  return `約${formatMinutes(item.estimateMinutes)}${item.estimateIsDefault ? '（仮）' : ''}`;
+}
 
 export type PlannerKind = 'local' | 'ai';
 
@@ -55,6 +84,7 @@ export type PlanInput = {
   energy: Energy;
   tasks: Task[];
   projects: Project[];
+  split: SplitSettings;
 };
 
 export type PlanProposal = {

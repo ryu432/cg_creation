@@ -24,6 +24,7 @@ export default function TaskEditScreen() {
           estimateMinutes: task.estimateMinutes,
           projectId: task.projectId,
           plannedToday: task.plannedDate === date,
+          allowSplit: task.allowSplit,
         }
       : null,
   );
@@ -46,6 +47,7 @@ export default function TaskEditScreen() {
           dueDate: draft.dueDate,
           estimateMinutes: draft.estimateMinutes,
           projectId: draft.projectId,
+          allowSplit: draft.allowSplit,
           // 「今日やる」をオフにしたときだけ外す（明日などに予定しているものはそのまま）
           plannedDate: draft.plannedToday ? date : task.plannedDate === date ? null : task.plannedDate,
         })

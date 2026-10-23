@@ -14,6 +14,8 @@ export type Task = {
   estimateMinutes: number | null;
   /** 振り返りで「明日に回す」を選んだ回数 */
   postponeCount: number;
+  /** 大きいときに、プランで「30分だけ」のように区切って入れてよいか */
+  allowSplit: boolean;
   status: TaskStatus;
   createdAt: string;
   completedAt: string | null;
@@ -25,6 +27,7 @@ export type NewTask = {
   plannedDate?: string | null;
   projectId?: string | null;
   estimateMinutes?: number | null;
+  allowSplit?: boolean;
 };
 
 export type Project = {
@@ -54,6 +57,7 @@ export function createTask(input: NewTask): Task {
     projectId: input.projectId ?? null,
     estimateMinutes: input.estimateMinutes ?? null,
     postponeCount: 0,
+    allowSplit: input.allowSplit ?? true,
     status: 'todo',
     createdAt: new Date().toISOString(),
     completedAt: null,
@@ -67,6 +71,7 @@ export function normalizeTask(task: Task): Task {
     projectId: task.projectId ?? null,
     estimateMinutes: task.estimateMinutes ?? null,
     postponeCount: task.postponeCount ?? 0,
+    allowSplit: task.allowSplit ?? true,
   };
 }
 

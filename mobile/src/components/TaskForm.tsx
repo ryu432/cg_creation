@@ -19,6 +19,7 @@ export type TaskDraft = {
   estimateMinutes: number | null;
   projectId: string | null;
   plannedToday: boolean;
+  allowSplit: boolean;
 };
 
 type Props = {
@@ -35,14 +36,15 @@ function isSameDraft(a: TaskDraft, b: TaskDraft): boolean {
     a.dueDate === b.dueDate &&
     a.estimateMinutes === b.estimateMinutes &&
     a.projectId === b.projectId &&
-    a.plannedToday === b.plannedToday
+    a.plannedToday === b.plannedToday &&
+    a.allowSplit === b.allowSplit
   );
 }
 
 // タスクの追加・編集画面の中身。戻るときに変更があれば、破棄してよいか確認する
 export function TaskForm({ initial, submitLabel, onSubmit, onDelete }: Props) {
   const theme = useTheme();
-  const { projects } = useTasks();
+  const { projects, planSettings } = useTasks();
   const [draft, setDraft] = useState(initial);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const set = (changes: Partial<TaskDraft>) => setDraft((d) => ({ ...d, ...changes }));
@@ -164,6 +166,28 @@ export function TaskForm({ initial, submitLabel, onSubmit, onDelete }: Props) {
         </View>
       </View>
 
+      {/* 区切る対象になる大きさのときだけ出す */}
+      {planSettings.split.enabled &&
+        draft.estimateMinutes !== null &&
+        draft.estimateMinutes >= planSettings.split.minTaskMinutes && (
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={styles.switchRow}>
+              <View style={styles.switchLabel}>
+                <Text style={[styles.rowText, { color: theme.text }]}>区切って進めてもよい</Text>
+                <Text style={[styles.hint, { color: theme.subText }]}>
+                  オフにすると、プランに入れるときは全部の時間をとります（途中で止められない用事など）
+                </Text>
+              </View>
+              <Switch
+                value={draft.allowSplit}
+                onValueChange={(allowSplit) => set({ allowSplit })}
+                trackColor={{ true: theme.primary, false: theme.border }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
+        )}
+
       <View style={styles.section}>
         <Text style={[styles.label, { color: theme.subText }]}>プロジェクト</Text>
         <View style={styles.chips}>
@@ -256,6 +280,15 @@ const styles = StyleSheet.create({
   },
   rowText: {
     fontSize: 16,
+  },
+  switchLabel: {
+    flex: 1,
+    gap: 2,
+    paddingRight: 12,
+  },
+  hint: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   button: {
     paddingVertical: 14,

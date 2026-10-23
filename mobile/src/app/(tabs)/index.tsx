@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { TaskList } from '@/components/TaskList';
 import { useTheme } from '@/constants/theme';
 import { today } from '@/lib/date';
-import { formatMinutes } from '@/lib/plan';
+import { formatPlanItemTime } from '@/lib/plan';
 import { isMissedPlannedTask, isTodayTask, sortTasks, Task } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
@@ -43,10 +43,8 @@ export default function TodayScreen() {
   const noteFor = (task: Task) => {
     const item = todayPlan?.items.find((i) => i.taskId === task.id);
     if (!item) return undefined;
-    const time =
-      task.estimateMinutes === null
-        ? `約${formatMinutes(item.estimateMinutes)}${item.estimateIsDefault ? '（仮）' : ''}`
-        : '';
+    // 区切ったときは常に「30分だけ（全体 約4時間）」を出す
+    const time = item.totalMinutes || task.estimateMinutes === null ? formatPlanItemTime(item) : '';
     return [time, item.reason].filter(Boolean).join('・') || undefined;
   };
 

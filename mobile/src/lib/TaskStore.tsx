@@ -3,7 +3,7 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 
 import type { BackupData } from './backup';
 import { defaultReminderSettings, ReminderSettings } from './notifications';
-import { DailyPlan, PlanUsage } from './plan';
+import { DailyPlan, defaultSplitSettings, PlanUsage, SplitSettings } from './plan';
 import { createProject, createTask, NewTask, normalizeTask, Project, Task } from './tasks';
 
 const TASKS_KEY = 'plano.tasks.v1';
@@ -12,6 +12,10 @@ const PLAN_KEY = 'plano.plan.v1';
 const PLAN_USAGE_KEY = 'plano.planUsage.v1';
 const REMINDERS_KEY = 'plano.reminders.v1';
 const ONBOARDED_KEY = 'plano.onboarded.v1';
+const PLAN_SETTINGS_KEY = 'plano.planSettings.v1';
+
+export type PlanSettings = { split: SplitSettings };
+export const defaultPlanSettings: PlanSettings = { split: defaultSplitSettings };
 
 type TaskStore = {
   tasks: Task[];
@@ -41,6 +45,9 @@ type TaskStore = {
   recordPlanRequest: (date: string) => void;
   reminders: ReminderSettings;
   setReminders: (reminders: ReminderSettings) => void;
+  /** 自動プランの設定（大きいタスクの区切り方など） */
+  planSettings: PlanSettings;
+  setPlanSettings: (settings: PlanSettings) => void;
   /** 初回のチュートリアルを見終わったか */
   onboarded: boolean;
   setOnboarded: (onboarded: boolean) => void;
@@ -55,18 +62,23 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [reminders, setReminders] = useState<ReminderSettings>(defaultReminderSettings);
+  const [planSettings, setPlanSettings] = useState<PlanSettings>(defaultPlanSettings);
   const [onboarded, setOnboarded] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet([TASKS_KEY, PROJECTS_KEY, PLAN_KEY, PLAN_USAGE_KEY, REMINDERS_KEY, ONBOARDED_KEY])
-      .then(([[, tasksJson], [, projectsJson], [, planJson], [, usageJson], [, remindersJson], [, onboardedJson]]) => {
+    AsyncStorage.multiGet([TASKS_KEY, PROJECTS_KEY, PLAN_KEY, PLAN_USAGE_KEY, REMINDERS_KEY, ONBOARDED_KEY, PLAN_SETTINGS_KEY])
+      .then(([[, tasksJson], [, projectsJson], [, planJson], [, usageJson], [, remindersJson], [, onboardedJson], [, planSettingsJson]]) => {
         if (tasksJson) setTasks((JSON.parse(tasksJson) as Task[]).map(normalizeTask));
         if (projectsJson) setProjects(JSON.parse(projectsJson));
         if (planJson) setPlan(JSON.parse(planJson));
         if (usageJson) setPlanUsage(JSON.parse(usageJson));
         if (remindersJson) setReminders({ ...defaultReminderSettings, ...JSON.parse(remindersJson) });
         if (onboardedJson) setOnboarded(JSON.parse(onboardedJson) === true);
+        if (planSettingsJson) {
+          const saved = JSON.parse(planSettingsJson);
+          setPlanSettings({ split: { ...defaultSplitSettings, ...saved.split } });
+        }
       })
       .catch((e) => console.warn('データの読み込みに失敗しました', e))
       .finally(() => setLoaded(true));
@@ -105,6 +117,11 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       console.warn('通知の設定の保存に失敗しました', e),
     );
   }, [reminders, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    AsyncStorage.setItem(PLAN_SETTINGS_KEY, JSON.stringify(planSettings)).catch(() => {});
+  }, [planSettings, loaded]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -168,6 +185,7 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
     setTasks(data.tasks);
     setProjects(data.projects);
     setReminders(data.reminders);
+    if (data.planSettings) setPlanSettings(data.planSettings);
     setPlan(null);
   }, []);
 
@@ -232,6 +250,8 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       recordPlanRequest,
       reminders,
       setReminders,
+      planSettings,
+      setPlanSettings,
       onboarded,
       setOnboarded,
     }),
@@ -259,6 +279,8 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       recordPlanRequest,
       reminders,
       setReminders,
+      planSettings,
+      setPlanSettings,
       onboarded,
       setOnboarded,
     ],
