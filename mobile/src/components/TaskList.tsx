@@ -1,9 +1,12 @@
-import { ReactElement } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
+import { ReactElement, useEffect, useState } from 'react';
+import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
 import { Task } from '@/lib/tasks';
 
+import { SelectionBar } from './SelectionBar';
 import { TaskItem } from './TaskItem';
 
 type Props = {
@@ -11,33 +14,99 @@ type Props = {
   header?: ReactElement;
   emptyMessage: string;
   noteFor?: (task: Task) => string | undefined;
+  /** 右下の＋ボタンを押したときに開く追加画面のパラメータ（省略すると＋ボタンを出さない） */
+  addParams?: Record<string, string>;
 };
 
-export function TaskList({ tasks, header, emptyMessage, noteFor }: Props) {
+// タスクの一覧。長押しで選択モードになり、選んだタスクをまとめて完了・移動・削除できる
+export function TaskList({ tasks, header, emptyMessage, noteFor, addParams }: Props) {
   const theme = useTheme();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const selecting = selected.size > 0;
+
+  // 一覧から消えたタスク（削除・別画面での変更）は選択から外す
+  useEffect(() => {
+    setSelected((prev) => {
+      const visible = new Set(tasks.map((t) => t.id));
+      const next = new Set([...prev].filter((id) => visible.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [tasks]);
+
+  // Android の戻るボタンで選択モードを抜ける
+  useEffect(() => {
+    if (!selecting) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setSelected(new Set());
+      return true;
+    });
+    return () => sub.remove();
+  }, [selecting]);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   return (
-    <FlatList
-      data={tasks}
-      keyExtractor={(t) => t.id}
-      renderItem={({ item }) => <TaskItem task={item} note={noteFor?.(item)} />}
-      ListHeaderComponent={header}
-      ListEmptyComponent={
-        <View style={styles.empty}>
-          <Text style={[styles.emptyText, { color: theme.subText }]}>{emptyMessage}</Text>
-        </View>
-      }
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      style={{ backgroundColor: theme.background }}
-    />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <FlatList
+        data={tasks}
+        keyExtractor={(t) => t.id}
+        renderItem={({ item }) => (
+          <TaskItem
+            task={item}
+            note={noteFor?.(item)}
+            selecting={selecting}
+            selected={selected.has(item.id)}
+            onToggleSelect={() => toggle(item.id)}
+          />
+        )}
+        extraData={selected}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={[styles.emptyText, { color: theme.subText }]}>{emptyMessage}</Text>
+          </View>
+        }
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      />
+
+      {selecting ? (
+        <SelectionBar
+          ids={[...selected]}
+          allSelected={selected.size === tasks.length}
+          onSelectAll={() => setSelected(new Set(tasks.map((t) => t.id)))}
+          onDone={() => setSelected(new Set())}
+        />
+      ) : (
+        addParams && (
+          <Pressable
+            onPress={() => router.push({ pathname: '/task/new', params: addParams })}
+            accessibilityLabel="タスクを追加"
+            style={({ pressed }) => [styles.fab, { backgroundColor: theme.primary, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Ionicons name="add" size={30} color={theme.onPrimary} />
+          </Pressable>
+        )
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   content: {
     padding: 16,
     gap: 10,
+    // 右下の＋ボタン・下の操作バーに最後のタスクが隠れないように
+    paddingBottom: 120,
   },
   empty: {
     paddingVertical: 48,
@@ -47,5 +116,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
 });

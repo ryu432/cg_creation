@@ -48,6 +48,7 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="task/new" options={{ title: 'タスクの追加', presentation: 'modal' }} />
         <Stack.Screen name="task/[id]" options={{ title: 'タスクの編集', presentation: 'modal' }} />
         <Stack.Screen name="project/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="plan" options={{ title: '今日のプラン', presentation: 'modal' }} />

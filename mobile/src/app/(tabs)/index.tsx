@@ -2,7 +2,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AddTaskBar } from '@/components/AddTaskBar';
 import { TaskList } from '@/components/TaskList';
 import { useTheme } from '@/constants/theme';
 import { today } from '@/lib/date';
@@ -58,7 +57,8 @@ export default function TodayScreen() {
     <TaskList
       tasks={todayTasks}
       noteFor={noteFor}
-      emptyMessage={'今日やることはまだありません。\nプランを作るか、上の欄から追加しましょう。'}
+      addParams={{ today: '1' }}
+      emptyMessage={'今日やることはまだありません。\nプランを作るか、右下の＋から追加しましょう。'}
       header={
         <View style={styles.header}>
           <View style={styles.summary}>
@@ -114,7 +114,6 @@ export default function TodayScreen() {
             )
           )}
 
-          <AddTaskBar placeholder="今日やることを追加" defaults={{ plannedDate: date }} />
         </View>
       }
     />

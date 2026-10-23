@@ -8,8 +8,18 @@ import { formatMinutes } from '@/lib/plan';
 import { isOverdue, Task } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
-/** note: タスク名の下に出す補足（「今日」画面でのプランの理由など） */
-export function TaskItem({ task, note }: { task: Task; note?: string }) {
+type Props = {
+  task: Task;
+  /** タスク名の下に出す補足（「今日」画面でのプランの理由など） */
+  note?: string;
+  /** 選択モード中か。選択モードではタップで選択を切り替える */
+  selecting?: boolean;
+  selected?: boolean;
+  /** 長押し（選択モードに入る）・選択モード中のタップで呼ばれる */
+  onToggleSelect?: () => void;
+};
+
+export function TaskItem({ task, note, selecting = false, selected = false, onToggleSelect }: Props) {
   const theme = useTheme();
   const { toggleDone, projects } = useTasks();
   const project = task.projectId ? projects.find((p) => p.id === task.projectId) : undefined;
@@ -20,19 +30,35 @@ export function TaskItem({ task, note }: { task: Task; note?: string }) {
 
   return (
     <Pressable
-      onPress={() => router.push({ pathname: '/task/[id]', params: { id: task.id } })}
+      onPress={() =>
+        selecting ? onToggleSelect?.() : router.push({ pathname: '/task/[id]', params: { id: task.id } })
+      }
+      onLongPress={selecting ? undefined : onToggleSelect}
+      delayLongPress={350}
       style={({ pressed }) => [
         styles.row,
-        { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.7 : 1 },
+        {
+          backgroundColor: selected ? theme.primarySoft : theme.surface,
+          borderColor: selected ? theme.primary : theme.border,
+          opacity: pressed ? 0.7 : 1,
+        },
       ]}
     >
-      <Pressable onPress={() => toggleDone(task.id)} hitSlop={12} accessibilityLabel="完了を切り替え">
+      {selecting ? (
         <Ionicons
-          name={done ? 'checkmark-circle' : 'ellipse-outline'}
+          name={selected ? 'checkbox' : 'square-outline'}
           size={26}
-          color={done ? theme.primary : theme.subText}
+          color={selected ? theme.primary : theme.subText}
         />
-      </Pressable>
+      ) : (
+        <Pressable onPress={() => toggleDone(task.id)} hitSlop={12} accessibilityLabel="完了を切り替え">
+          <Ionicons
+            name={done ? 'checkmark-circle' : 'ellipse-outline'}
+            size={26}
+            color={done ? theme.primary : theme.subText}
+          />
+        </Pressable>
+      )}
       <View style={styles.body}>
         <Text
           style={[

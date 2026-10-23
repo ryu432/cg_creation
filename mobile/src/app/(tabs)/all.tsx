@@ -2,7 +2,6 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AddTaskBar } from '@/components/AddTaskBar';
 import { Chip } from '@/components/Chip';
 import { TaskList } from '@/components/TaskList';
 import { useTheme } from '@/constants/theme';
@@ -24,10 +23,11 @@ export default function AllTasksScreen() {
   return (
     <TaskList
       tasks={visible}
+      addParams={selectedProject ? { projectId: selectedProject.id } : {}}
       emptyMessage={
         selectedProject
           ? `「${selectedProject.name}」のタスクはまだありません。`
-          : 'タスクはまだありません。\n思いついたことを上の欄に書いてみましょう。'
+          : 'タスクはまだありません。\n右下の＋から、思いついたことを追加してみましょう。'
       }
       header={
         <View style={styles.header}>
@@ -51,10 +51,6 @@ export default function AllTasksScreen() {
             <Chip label="＋ プロジェクト" onPress={() => router.push('/project/edit')} />
           </ScrollView>
 
-          <AddTaskBar
-            placeholder={selectedProject ? `「${selectedProject.name}」にタスクを追加` : 'タスクを追加'}
-            defaults={{ projectId: selectedProject?.id ?? null }}
-          />
           {doneCount > 0 && (
             <Pressable onPress={() => setShowDone((v) => !v)} hitSlop={8}>
               <Text style={[styles.toggle, { color: theme.subText }]}>

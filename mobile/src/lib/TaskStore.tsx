@@ -21,6 +21,10 @@ type TaskStore = {
   /** 「今日やる」を別の日に移す。先送りの回数も数える */
   postponeTask: (id: string, toDate: string) => void;
   removeTask: (id: string) => void;
+  /** 一括操作（選択モード用） */
+  updateTasks: (ids: string[], changes: Partial<Omit<Task, 'id'>>) => void;
+  completeTasks: (ids: string[]) => void;
+  removeTasks: (ids: string[]) => void;
   clearCompleted: () => void;
   clearAll: () => void;
   addProject: (name: string, color: string) => Project | null;
@@ -124,6 +128,24 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const updateTasks = useCallback((ids: string[], changes: Partial<Omit<Task, 'id'>>) => {
+    const set = new Set(ids);
+    setTasks((prev) => prev.map((t) => (set.has(t.id) ? { ...t, ...changes } : t)));
+  }, []);
+
+  const completeTasks = useCallback((ids: string[]) => {
+    const set = new Set(ids);
+    const now = new Date().toISOString();
+    setTasks((prev) =>
+      prev.map((t) => (set.has(t.id) && t.status === 'todo' ? { ...t, status: 'done', completedAt: now } : t)),
+    );
+  }, []);
+
+  const removeTasks = useCallback((ids: string[]) => {
+    const set = new Set(ids);
+    setTasks((prev) => prev.filter((t) => !set.has(t.id)));
+  }, []);
+
   const clearCompleted = useCallback(() => {
     setTasks((prev) => prev.filter((t) => t.status !== 'done'));
   }, []);
@@ -174,6 +196,9 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       toggleDone,
       postponeTask,
       removeTask,
+      updateTasks,
+      completeTasks,
+      removeTasks,
       clearCompleted,
       clearAll,
       addProject,
@@ -195,6 +220,9 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       toggleDone,
       postponeTask,
       removeTask,
+      updateTasks,
+      completeTasks,
+      removeTasks,
       clearCompleted,
       clearAll,
       addProject,

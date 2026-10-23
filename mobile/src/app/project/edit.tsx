@@ -7,12 +7,11 @@ import { useTheme } from '@/constants/theme';
 import { projectColors } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
-// id があれば既存のプロジェクトを編集、なければ新しく作る。
-// assignTo（タスクの id）があれば、作ったプロジェクトをそのタスクに設定する
+// id があれば既存のプロジェクトを編集、なければ新しく作る
 export default function ProjectEditScreen() {
-  const { id, assignTo } = useLocalSearchParams<{ id?: string; assignTo?: string }>();
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const theme = useTheme();
-  const { projects, tasks, addProject, updateProject, removeProject, updateTask } = useTasks();
+  const { projects, tasks, addProject, updateProject, removeProject } = useTasks();
   const project = id ? projects.find((p) => p.id === id) : undefined;
   const [name, setName] = useState(project?.name ?? '');
   const [color, setColor] = useState(project?.color ?? projectColors[projects.length % projectColors.length]);
@@ -21,10 +20,7 @@ export default function ProjectEditScreen() {
   const save = () => {
     if (!canSave) return;
     if (project) updateProject(project.id, { name: name.trim(), color });
-    else {
-      const created = addProject(name, color);
-      if (created && assignTo) updateTask(assignTo, { projectId: created.id });
-    }
+    else addProject(name, color);
     router.back();
   };
 
