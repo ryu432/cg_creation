@@ -1,7 +1,9 @@
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsModule from 'expo-notifications';
 import { Platform } from 'react-native';
 
-// 朝のプラン・夜の振り返りを知らせる、毎日のローカル通知（サーバーは使わない）
+// 朝のプラン・夜の振り返りを知らせる、毎日のローカル通知（サーバーは使わない）。
+// expo-notifications は環境（Expo Go など）によって起動を妨げることがあるので、
+// アプリの起動時には読み込まず、通知を使うときに初めて読み込む
 
 export type ReminderTime = { enabled: boolean; hour: number; minute: number };
 
@@ -15,6 +17,10 @@ export const defaultReminderSettings: ReminderSettings = {
   evening: { enabled: false, hour: 21, minute: 0 },
 };
 
+export function hasEnabledReminder(settings: ReminderSettings): boolean {
+  return settings.morning.enabled || settings.evening.enabled;
+}
+
 const CHANNEL_ID = 'reminders';
 
 const REMINDERS = {
@@ -26,24 +32,29 @@ export function formatTime({ hour, minute }: { hour: number; minute: number }): 
   return `${hour}:${String(minute).padStart(2, '0')}`;
 }
 
-// アプリを開いているときに届いた通知も表示する（使えない環境でもアプリは止めない）
-try {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
+let modulePromise: Promise<typeof NotificationsModule> | null = null;
+
+// 初めて呼ばれたときに読み込み、アプリを開いているときに届いた通知も表示するよう設定する
+function loadNotifications(): Promise<typeof NotificationsModule> {
+  modulePromise ??= import('expo-notifications').then((Notifications) => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+    return Notifications;
   });
-} catch (e) {
-  console.warn('通知の表示設定に失敗しました', e);
+  return modulePromise;
 }
 
 /** 通知の許可を確認し、まだなら求める。許可されたら true */
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   try {
+    const Notifications = await loadNotifications();
     const current = await Notifications.getPermissionsAsync();
     if (current.granted) return true;
     if (!current.canAskAgain) return false;
@@ -58,6 +69,7 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 /** 設定に合わせて、毎日の通知を登録し直す */
 export async function applyReminders(settings: ReminderSettings): Promise<void> {
   if (Platform.OS === 'web') return;
+  const Notifications = await loadNotifications();
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
       name: 'プランと振り返りのお知らせ',
@@ -80,8 +92,39 @@ export async function applyReminders(settings: ReminderSettings): Promise<void> 
   }
 }
 
-/** 通知をタップしたときに開く画面（/plan または /review） */
-export function urlFromNotification(response: Notifications.NotificationResponse): string | null {
+function urlFromNotification(response: NotificationsModule.NotificationResponse): string | null {
   const url = response.notification.request.content.data?.url;
   return url === '/plan' || url === '/review' ? url : null;
+}
+
+/**
+ * 通知をタップしたときに onOpen（/plan または /review）を呼ぶ。
+ * 通知から起動した場合と、開いている間にタップした場合の両方。戻り値で受け取りをやめる
+ */
+export function listenToNotificationTaps(onOpen: (url: string) => void): () => void {
+  if (Platform.OS === 'web') return () => {};
+  let subscription: { remove: () => void } | null = null;
+  let stopped = false;
+
+  const handle = (Notifications: typeof NotificationsModule, response: NotificationsModule.NotificationResponse | null) => {
+    if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+    const url = urlFromNotification(response);
+    if (url) onOpen(url);
+  };
+
+  loadNotifications()
+    .then(async (Notifications) => {
+      if (stopped) return;
+      subscription = Notifications.addNotificationResponseReceivedListener((r) => handle(Notifications, r));
+      const last = await Notifications.getLastNotificationResponseAsync();
+      handle(Notifications, last);
+      // 同じ通知でもう一度開かないように消しておく
+      await Notifications.clearLastNotificationResponseAsync();
+    })
+    .catch((e) => console.warn('通知の受け取りを設定できませんでした', e));
+
+  return () => {
+    stopped = true;
+    subscription?.remove();
+  };
 }
