@@ -30,7 +30,8 @@
     "extra": {
       "eas": {
         "projectId": "932fa1a1-c275-46da-8ffb-4da0012ac13b"
-      }
+      },
+      "planner": "local"
     },
     "scheme": "plano",
     "plugins": [

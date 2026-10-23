@@ -6,17 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { Chip } from '@/components/Chip';
 import { useTheme } from '@/constants/theme';
 import { today } from '@/lib/date';
-import {
-  availableTimeOptions,
-  DAILY_PLAN_LIMIT,
-  Energy,
-  energyOptions,
-  formatMinutes,
-  isPlanApiConfigured,
-  PlanError,
-  PlanItem,
-  requestPlan,
-} from '@/lib/plan';
+import { availableTimeOptions, Energy, energyOptions, formatMinutes, getPlanner, PlanError, PlanItem } from '@/lib/plan';
 import { useTasks } from '@/lib/TaskStore';
 
 type Proposal = { comment: string; items: (PlanItem & { accepted: boolean })[] };
@@ -26,8 +16,10 @@ export default function PlanScreen() {
   const { tasks, projects, plan, planUsage, acceptPlan, recordPlanRequest } = useTasks();
   const date = today();
   const todoCount = tasks.filter((t) => t.status === 'todo').length;
+  const planner = getPlanner();
   const usedToday = planUsage?.date === date ? planUsage.count : 0;
-  const remaining = Math.max(DAILY_PLAN_LIMIT - usedToday, 0);
+  // 回数制限があるのは AI のときだけ（null は無制限）
+  const remaining = planner.dailyLimit === null ? null : Math.max(planner.dailyLimit - usedToday, 0);
 
   const [availableMinutes, setAvailableMinutes] = useState(plan?.availableMinutes ?? 120);
   const [energy, setEnergy] = useState<Energy>(plan?.date === date ? plan.energy : 'normal');
@@ -35,16 +27,16 @@ export default function PlanScreen() {
   const [error, setError] = useState<string | null>(null);
   const [proposal, setProposal] = useState<Proposal | null>(null);
 
-  const configured = isPlanApiConfigured();
-  const canRequest = configured && todoCount > 0 && remaining > 0 && !loading;
+  const configured = planner.isReady();
+  const canRequest = configured && todoCount > 0 && remaining !== 0 && !loading;
 
   const submit = async () => {
     if (!canRequest) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await requestPlan({ date, availableMinutes, energy, tasks, projects });
-      recordPlanRequest(date);
+      const result = await planner.propose({ date, availableMinutes, energy, tasks, projects });
+      if (planner.dailyLimit !== null) recordPlanRequest(date);
       setProposal({ comment: result.comment, items: result.items.map((i) => ({ ...i, accepted: true })) });
     } catch (e) {
       setError(e instanceof PlanError ? e.message : '提案の作成に失敗しました。');
@@ -67,6 +59,7 @@ export default function PlanScreen() {
       energy,
       comment: proposal.comment,
       items: proposal.items.filter((i) => i.accepted).map(({ accepted: _, ...item }) => item),
+      planner: planner.kind,
       createdAt: new Date().toISOString(),
     });
     router.back();
@@ -136,7 +129,9 @@ export default function PlanScreen() {
           <Text style={[styles.buttonText, { color: theme.onPrimary }]}>このプランで始める（{accepted.length}件）</Text>
         </Pressable>
         <Pressable onPress={() => setProposal(null)} style={styles.linkButton} hitSlop={8}>
-          <Text style={[styles.link, { color: theme.primary }]}>条件を変えて作り直す（残り{remaining}回）</Text>
+          <Text style={[styles.link, { color: theme.primary }]}>
+            条件を変えて作り直す{remaining === null ? '' : `（残り${remaining}回）`}
+          </Text>
         </Pressable>
       </ScrollView>
     );
@@ -189,8 +184,10 @@ export default function PlanScreen() {
           : todoCount === 0
             ? '未完了のタスクがありません。先にタスクを追加しましょう。'
             : remaining === 0
-              ? `今日の提案は${DAILY_PLAN_LIMIT}回使い切りました。また明日どうぞ。`
-              : `未完了の${todoCount}件から AI が選びます（今日はあと${remaining}回）。`}
+              ? `今日の提案は${planner.dailyLimit}回使い切りました。また明日どうぞ。`
+              : planner.kind === 'ai'
+                ? `未完了の${todoCount}件から AI が選びます（今日はあと${remaining}回）。`
+                : `未完了の${todoCount}件から、期限と時間をもとに選びます。`}
       </Text>
     </ScrollView>
   );

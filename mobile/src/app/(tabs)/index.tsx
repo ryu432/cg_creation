@@ -41,7 +41,7 @@ export default function TodayScreen() {
     <TaskList
       tasks={todayTasks}
       noteFor={(t) => noteFor(t.id)}
-      emptyMessage={'今日やることはまだありません。\nAI にプランを作ってもらうか、上の欄から追加しましょう。'}
+      emptyMessage={'今日やることはまだありません。\nプランを作るか、上の欄から追加しましょう。'}
       header={
         <View style={styles.header}>
           <View style={styles.summary}>
@@ -73,7 +73,7 @@ export default function TodayScreen() {
                 <Ionicons name="sunny" size={22} color={theme.onPrimary} />
                 <View style={styles.planButtonBody}>
                   <Text style={[styles.planButtonTitle, { color: theme.onPrimary }]}>今日のプランを作る</Text>
-                  <Text style={[styles.planButtonSub, { color: theme.onPrimary }]}>AI が今日やることを提案します</Text>
+                  <Text style={[styles.planButtonSub, { color: theme.onPrimary }]}>期限と時間から、今日やることを選びます</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={theme.onPrimary} />
               </Pressable>

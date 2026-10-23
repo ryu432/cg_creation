@@ -218,16 +218,34 @@ AI呼び出し  : Supabase Edge Functions（サーバー側）→ Claude API
 
 ### Phase 3 の進捗（Phase 1 より先に着手）
 
-- [x] 「今日使える時間」と「体力・気分」を選んで、AI にプランを提案してもらう（理由・見積もり時間つき）
+- [x] 「今日使える時間」と「体力・気分」を選んで、プランを提案してもらう（理由・見積もり時間つき）
 - [x] 提案から外したいタスクを外して確定 → 「今日」画面に理由つきで並ぶ
-- [x] 1日3回までの回数制限（スマホ側で管理）
-- [x] サーバー処理：Supabase Edge Function（`supabase/functions/plan`）→ Claude API
-- [ ] Supabase / Anthropic の設定と本番での動作確認
+- [x] **当面は AI を使わない「自動プラン」**（端末内のルールで選ぶ。無料・オフラインで動く）
+  - 期限切れ → 今日が期限 → 「今日やる」 → 明日が期限 → 1週間以内が期限 → その他（古い順）の優先順
+  - 「今日使える時間」に収まる分だけ選ぶ（期限切れ・今日が期限は少し超えても入れる）。見積もり時間は当面1件30分
+  - 体力が低い日は最大3件・使える時間の75%まで
+- [x] AI（Claude）に切り替えられる仕組みは残してある（下記）
 - [ ] 夜の振り返り（やり残しを明日に回す / 分解する）
 - [ ] 朝の通知
 
-> 注意：ログイン機能ができるまで、プラン提案 API は誰でも呼べる状態になる。
-> Anthropic Console で月の利用上限（spend limit）を必ず設定しておく。ログイン後は JWT 検証とユーザーごとの回数制限に切り替える。
+#### プランの作り方を切り替える
+
+`mobile/app.json` の `expo.extra.planner` で切り替える。
+
+| 値 | 方式 | 費用 | 必要な準備 |
+|---|---|---|---|
+| `"local"`（今の設定） | 端末内のルール（`mobile/src/lib/planners/local.ts`） | 無料 | なし |
+| `"ai"` | Claude（`mobile/src/lib/planners/ai.ts` → `supabase/functions/plan`） | 1回 数円程度（モデルによる） | Anthropic API キー、Supabase、`planApiUrl` の設定 |
+
+AI に切り替えるときの手順:
+1. Anthropic Console で API キーを作り、月の利用上限を設定する
+2. Supabase のプロジェクトを作り、Edge Functions の Secrets に `ANTHROPIC_API_KEY` を登録する
+3. GitHub の Secrets に `SUPABASE_ACCESS_TOKEN` を登録し、`.github/workflows/supabase-functions.yml` の `SUPABASE_PROJECT_REF` に Project ID を入れる
+4. `mobile/app.json` の `expo.extra` を `"planner": "ai"`、`"planApiUrl": "https://<Project ID>.supabase.co/functions/v1/plan"` にする
+
+> 注意：ログイン機能ができるまで、AI のプラン提案 API は誰でも呼べる状態になる。
+> 利用上限を必ず設定しておく。ログイン後は JWT 検証とユーザーごとの回数制限に切り替える。
+> 費用を抑えたいときは `supabase/functions/plan/index.ts` のモデルを軽量なもの（Haiku）にする。
 
 ### 将来の機能候補
 

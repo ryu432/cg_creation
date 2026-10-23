@@ -7,7 +7,7 @@ import { formatDueDate, today } from '@/lib/date';
 import { isOverdue, Task } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
-/** note: タスク名の下に出す補足（「今日」画面での AI の提案理由など） */
+/** note: タスク名の下に出す補足（「今日」画面でのプランの理由など） */
 export function TaskItem({ task, note }: { task: Task; note?: string }) {
   const theme = useTheme();
   const { toggleDone, projects } = useTasks();

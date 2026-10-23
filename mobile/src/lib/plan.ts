@@ -1,6 +1,10 @@
 import Constants from 'expo-constants';
 
+import { aiPlanner, isAiPlannerConfigured } from './planners/ai';
+import { localPlanner } from './planners/local';
 import { Project, Task } from './tasks';
+
+export { PlanError } from './planError';
 
 export type Energy = 'low' | 'normal' | 'high';
 
@@ -18,14 +22,13 @@ export const energyOptions: { label: string; value: Energy }[] = [
   { label: '💪 高い', value: 'high' },
 ];
 
-/** 無料プランで1日に使える AI プラン提案の回数 */
-export const DAILY_PLAN_LIMIT = 3;
-
 export type PlanItem = {
   taskId: string;
   estimateMinutes: number;
   reason: string;
 };
+
+export type PlannerKind = 'local' | 'ai';
 
 export type DailyPlan = {
   date: string;
@@ -34,6 +37,8 @@ export type DailyPlan = {
   comment: string;
   /** 採用したタスクだけを、取り組む順に保存する */
   items: PlanItem[];
+  /** どの方式で作ったプランか（古いデータにはない） */
+  planner?: PlannerKind;
   createdAt: string;
 };
 
@@ -42,15 +47,41 @@ export type PlanUsage = {
   count: number;
 };
 
-export class PlanError extends Error {}
+export type PlanInput = {
+  date: string;
+  availableMinutes: number;
+  energy: Energy;
+  tasks: Task[];
+  projects: Project[];
+};
 
-function planApiUrl(): string | null {
-  const url = Constants.expoConfig?.extra?.planApiUrl;
-  return typeof url === 'string' && url ? url : null;
-}
+export type PlanProposal = {
+  comment: string;
+  items: PlanItem[];
+};
 
-export function isPlanApiConfigured(): boolean {
-  return planApiUrl() !== null;
+/**
+ * プランの作り方。今は端末内のルールで作る local と、サーバー経由で Claude に頼む ai がある。
+ * 新しい方式を足すときは、この形の関数を planners/ に作って getPlanner に登録する
+ */
+export type Planner = {
+  kind: PlannerKind;
+  /** 1日に作れる回数（null は無制限）。AI はお金がかかるので回数を絞る */
+  dailyLimit: number | null;
+  /** 使える状態か（AI なら接続先が設定済みか） */
+  isReady: () => boolean;
+  propose: (input: PlanInput) => Promise<PlanProposal>;
+};
+
+const planners: Record<PlannerKind, Planner> = {
+  local: { kind: 'local', dailyLimit: null, isReady: () => true, propose: localPlanner },
+  ai: { kind: 'ai', dailyLimit: 3, isReady: isAiPlannerConfigured, propose: aiPlanner },
+};
+
+// app.json の expo.extra.planner で切り替える（"local" または "ai"、未設定なら local）
+export function getPlanner(): Planner {
+  const kind = Constants.expoConfig?.extra?.planner;
+  return kind === 'ai' ? planners.ai : planners.local;
 }
 
 export function formatMinutes(minutes: number): string {
@@ -58,50 +89,4 @@ export function formatMinutes(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m === 0 ? `${h}時間` : `${h}時間${m}分`;
-}
-
-// 未完了タスクをサーバー（Supabase Edge Function）に送り、Claude にプランを提案してもらう
-export async function requestPlan(params: {
-  date: string;
-  availableMinutes: number;
-  energy: Energy;
-  tasks: Task[];
-  projects: Project[];
-}): Promise<{ comment: string; items: PlanItem[] }> {
-  const url = planApiUrl();
-  if (!url) throw new PlanError('AI の接続先がまだ設定されていません。');
-
-  const todo = params.tasks.filter((t) => t.status === 'todo').slice(0, 100);
-  const body = {
-    date: params.date,
-    availableMinutes: params.availableMinutes,
-    energy: params.energy,
-    tasks: todo.map((t) => ({
-      id: t.id,
-      title: t.title,
-      dueDate: t.dueDate,
-      projectName: params.projects.find((p) => p.id === t.projectId)?.name ?? null,
-      plannedToday: t.plannedDate === params.date,
-      createdAt: t.createdAt,
-    })),
-  };
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new PlanError('通信できませんでした。電波の状態を確認してください。');
-  }
-
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    const message = data && typeof data.message === 'string' ? data.message : null;
-    throw new PlanError(message ?? `提案の作成に失敗しました（${response.status}）`);
-  }
-  if (!data || !Array.isArray(data.items)) throw new PlanError('AI の回答を読み取れませんでした。');
-  return { comment: typeof data.comment === 'string' ? data.comment : '', items: data.items };
 }
