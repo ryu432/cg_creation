@@ -5,7 +5,18 @@
 - 企画書: [docs/planning.md](docs/planning.md)
 - アプリ本体: [mobile/](mobile/)（Expo + TypeScript）
 
-## スマホで動かす
+## スマホで使う（Android）
+
+Plano 専用アプリ（APK）を EAS でクラウドビルドして、スマホにインストールする。パソコンは不要。
+
+1. GitHub Actions の **EAS Build** を実行する（`mobile/package.json`・`app.json`・`eas.json` を変更してプッシュしたときも自動で動く）
+2. ログの最後に出る APK のリンクをスマホで開き、インストールする（初回は「提供元不明のアプリ」を許可する）
+3. 以後の修正は `mobile/` をプッシュすると **EAS Update** で配信され、アプリを開き直すと反映される
+   - 部品の構成（ネイティブ部分）が変わったときは、作り直したアプリにだけ届く（`runtimeVersion: fingerprint`）。そのときは 1〜2 をやり直す
+
+データは端末の中に保存される。別のアプリへ移すときは、設定 → データ →「データを書き出す」→ 移行先で「データを読み込む」。
+
+## パソコンで開発するとき（Expo Go）
 
 ### 準備（最初の1回だけ）
 

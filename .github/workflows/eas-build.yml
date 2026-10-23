@@ -1,0 +1,41 @@
+# Plano 専用アプリ（Android の APK）を EAS でクラウドビルドする。
+# 部品の構成が変わったとき（package.json・app.json・eas.json の変更）と、手動実行のときに動く。
+# できた APK のダウンロードリンクは、このワークフローのログの最後に表示される
+name: EAS Build
+
+on:
+  push:
+    paths:
+      - 'mobile/package.json'
+      - 'mobile/app.json'
+      - 'mobile/eas.json'
+      - '.github/workflows/eas-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ビルドが終わるまで待ち、APK のリンクをログに出す（初回は署名用の鍵も自動で作られる）
+      - name: Build Android APK
+        run: eas build --platform android --profile preview --non-interactive

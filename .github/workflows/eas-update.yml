@@ -1,5 +1,6 @@
-# mobile/ に変更をプッシュすると、EAS Update で Expo に公開する。
-# スマホの Expo Go から最新版を開いて確認できる。
+# mobile/ に変更をプッシュすると、EAS Update で公開する。
+# Plano 専用アプリ（preview チャンネルでビルドしたもの）が、次に開いたときに最新版を受け取る。
+# 部品の構成（ネイティブ部分）が変わった更新は、作り直したアプリにだけ届く（runtimeVersion: fingerprint）
 name: EAS Update
 
 on:
@@ -42,4 +43,4 @@ jobs:
         run: npm ci
 
       - name: Publish update
-        run: eas update --auto --non-interactive
+        run: eas update --channel preview --message "$(git log -1 --pretty=%s)" --non-interactive
