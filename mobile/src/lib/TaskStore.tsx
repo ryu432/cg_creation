@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import type { BackupData } from './backup';
 import { defaultReminderSettings, ReminderSettings } from './notifications';
 import { DailyPlan, PlanUsage } from './plan';
 import { createProject, createTask, NewTask, normalizeTask, Project, Task } from './tasks';
@@ -27,6 +28,8 @@ type TaskStore = {
   removeTasks: (ids: string[]) => void;
   clearCompleted: () => void;
   clearAll: () => void;
+  /** 読み込んだバックアップで、タスク・プロジェクト・通知の設定を置き換える */
+  replaceAll: (data: BackupData) => void;
   addProject: (name: string, color: string) => Project | null;
   updateProject: (id: string, changes: Partial<Pick<Project, 'name' | 'color'>>) => void;
   removeProject: (id: string) => void;
@@ -150,6 +153,13 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
     setTasks((prev) => prev.filter((t) => t.status !== 'done'));
   }, []);
 
+  const replaceAll = useCallback((data: BackupData) => {
+    setTasks(data.tasks);
+    setProjects(data.projects);
+    setReminders(data.reminders);
+    setPlan(null);
+  }, []);
+
   const clearAll = useCallback(() => {
     setTasks([]);
     setProjects([]);
@@ -201,6 +211,7 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       removeTasks,
       clearCompleted,
       clearAll,
+      replaceAll,
       addProject,
       updateProject,
       removeProject,
@@ -225,6 +236,7 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       removeTasks,
       clearCompleted,
       clearAll,
+      replaceAll,
       addProject,
       updateProject,
       removeProject,

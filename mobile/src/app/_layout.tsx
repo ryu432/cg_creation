@@ -53,6 +53,7 @@ export default function RootLayout() {
         <Stack.Screen name="project/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="plan" options={{ title: '今日のプラン', presentation: 'modal' }} />
         <Stack.Screen name="review" options={{ title: '振り返り', presentation: 'modal' }} />
+        <Stack.Screen name="import" options={{ title: 'データを読み込む', presentation: 'modal' }} />
       </Stack>
       {/* 通知が使える環境だけ（Web・Expo Go では使わない） */}
       {notificationsSupported() && <NotificationEffects />}

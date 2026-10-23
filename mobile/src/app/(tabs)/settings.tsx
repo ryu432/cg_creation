@@ -2,16 +2,24 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { ReactNode, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { TimeEditor } from '@/components/TimeEditor';
 import { useTheme } from '@/constants/theme';
+import { exportBackup } from '@/lib/backup';
 import { ensureNotificationPermission, formatTime, notificationsSupported, ReminderSettings } from '@/lib/notifications';
 import { useTasks } from '@/lib/TaskStore';
 
 export default function SettingsScreen() {
   const theme = useTheme();
   const { tasks, projects, clearCompleted, clearAll, reminders, setReminders } = useTasks();
+
+  // スマホの共有機能で送る（メモ・LINE・Google ドライブなど）
+  const exportData = () => {
+    Share.share({ message: exportBackup({ tasks, projects, reminders }), title: 'Plano のデータ' }).catch((e) =>
+      console.warn('書き出しに失敗しました', e),
+    );
+  };
   const [editingTime, setEditingTime] = useState<keyof ReminderSettings | null>(null);
   const canNotify = notificationsSupported();
 
@@ -119,6 +127,8 @@ export default function SettingsScreen() {
       </Section>
 
       <Section title="データ">
+        <ActionRow label="データを書き出す（バックアップ）" onPress={exportData} />
+        <ActionRow label="データを読み込む" onPress={() => router.push('/import')} />
         <ActionRow label="完了したタスクを削除" onPress={confirmClearCompleted} disabled={doneCount === 0} />
         <ActionRow label="すべてのデータを削除" onPress={confirmClearAll} disabled={tasks.length === 0} danger />
       </Section>
