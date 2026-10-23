@@ -8,10 +8,13 @@ import { useTheme } from '@/constants/theme';
 import { applyReminders, urlFromNotification } from '@/lib/notifications';
 import { TaskStoreProvider, useTasks } from '@/lib/TaskStore';
 
-// 通知の設定が変わったら登録し直し、通知をタップしたら対応する画面を開く
+// 画面の表示中にエラーが起きたら、止まらずにエラー内容と「再試行」ボタンを出す
+export { ErrorBoundary } from 'expo-router';
+
+// 通知の設定が変わったら登録し直し、通知をタップしたら対応する画面を開く。
+// 通知まわりは Expo Go など環境によって使えない機能があるので、失敗してもアプリは止めない
 function NotificationEffects() {
   const { reminders, loaded } = useTasks();
-  const lastResponse = Notifications.useLastNotificationResponse();
 
   useEffect(() => {
     if (!loaded) return;
@@ -19,12 +22,29 @@ function NotificationEffects() {
   }, [reminders, loaded]);
 
   useEffect(() => {
-    if (!lastResponse || lastResponse.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
-    const url = urlFromNotification(lastResponse);
-    if (url) router.push(url);
-    // 同じ通知でもう一度開かないように消しておく
-    Notifications.clearLastNotificationResponseAsync().catch(() => {});
-  }, [lastResponse]);
+    const open = (response: Notifications.NotificationResponse | null) => {
+      if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+      const url = urlFromNotification(response);
+      if (url) router.push(url);
+    };
+
+    // アプリが閉じていたときに通知から起動した場合
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        open(response);
+        return Notifications.clearLastNotificationResponseAsync();
+      })
+      .catch((e) => console.warn('通知の確認に失敗しました', e));
+
+    // アプリを開いている間・バックグラウンドにある間にタップされた場合
+    let subscription: { remove: () => void } | null = null;
+    try {
+      subscription = Notifications.addNotificationResponseReceivedListener(open);
+    } catch (e) {
+      console.warn('通知の受け取りを設定できませんでした', e);
+    }
+    return () => subscription?.remove();
+  }, []);
 
   return null;
 }

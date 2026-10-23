@@ -26,24 +26,33 @@ export function formatTime({ hour, minute }: { hour: number; minute: number }): 
   return `${hour}:${String(minute).padStart(2, '0')}`;
 }
 
-// アプリを開いているときに届いた通知も表示する
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+// アプリを開いているときに届いた通知も表示する（使えない環境でもアプリは止めない）
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+} catch (e) {
+  console.warn('通知の表示設定に失敗しました', e);
+}
 
 /** 通知の許可を確認し、まだなら求める。許可されたら true */
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
-  const current = await Notifications.getPermissionsAsync();
-  if (current.granted) return true;
-  if (!current.canAskAgain) return false;
-  const requested = await Notifications.requestPermissionsAsync();
-  return requested.granted;
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted) return true;
+    if (!current.canAskAgain) return false;
+    const requested = await Notifications.requestPermissionsAsync();
+    return requested.granted;
+  } catch (e) {
+    console.warn('通知の許可を確認できませんでした', e);
+    return false;
+  }
 }
 
 /** 設定に合わせて、毎日の通知を登録し直す */
