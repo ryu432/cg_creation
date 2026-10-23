@@ -35,7 +35,8 @@
     },
     "scheme": "plano",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-notifications"
     ],
     "platforms": [
       "ios",

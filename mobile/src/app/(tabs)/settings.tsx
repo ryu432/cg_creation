@@ -1,15 +1,29 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ReactNode, useState } from 'react';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { TimeEditor } from '@/components/TimeEditor';
 import { useTheme } from '@/constants/theme';
+import { ensureNotificationPermission, formatTime, ReminderSettings } from '@/lib/notifications';
 import { useTasks } from '@/lib/TaskStore';
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const { tasks, projects, clearCompleted, clearAll } = useTasks();
+  const { tasks, projects, clearCompleted, clearAll, reminders, setReminders } = useTasks();
+  const [editingTime, setEditingTime] = useState<keyof ReminderSettings | null>(null);
+
+  const toggleReminder = async (key: keyof ReminderSettings, on: boolean) => {
+    if (on && !(await ensureNotificationPermission())) {
+      Alert.alert('通知が許可されていません', 'スマホの設定アプリから、Expo Go（Plano）の通知を許可してください。', [
+        { text: 'キャンセル', style: 'cancel' },
+        { text: '設定を開く', onPress: () => Linking.openSettings() },
+      ]);
+      return;
+    }
+    setReminders({ ...reminders, [key]: { ...reminders[key], enabled: on } });
+  };
   const todoCount = tasks.filter((t) => t.status === 'todo').length;
   const doneCount = tasks.length - todoCount;
 
@@ -32,6 +46,45 @@ export default function SettingsScreen() {
       <Section title="タスク">
         <Row label="未完了" value={`${todoCount}件`} />
         <Row label="完了" value={`${doneCount}件`} />
+      </Section>
+
+      <Section title="通知">
+        {(
+          [
+            { key: 'morning', label: '朝のプラン', sub: '今日のプランを作るお知らせ' },
+            { key: 'evening', label: '夜の振り返り', sub: 'やり残しを振り返るお知らせ' },
+          ] as const
+        ).map(({ key, label, sub }) => (
+          <View key={key}>
+            <View style={styles.row}>
+              <View style={styles.reminderLabel}>
+                <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
+                <Text style={[styles.sub, { color: theme.subText }]}>{sub}</Text>
+              </View>
+              <Pressable
+                onPress={() => setEditingTime((v) => (v === key ? null : key))}
+                hitSlop={8}
+                accessibilityLabel={`${label}の時刻を変える`}
+              >
+                <Text style={[styles.time, { color: reminders[key].enabled ? theme.primary : theme.subText }]}>
+                  {formatTime(reminders[key])}
+                </Text>
+              </Pressable>
+              <Switch
+                value={reminders[key].enabled}
+                onValueChange={(on) => toggleReminder(key, on)}
+                trackColor={{ true: theme.primary, false: theme.border }}
+              />
+            </View>
+            {editingTime === key && (
+              <TimeEditor
+                hour={reminders[key].hour}
+                minute={reminders[key].minute}
+                onChange={(time) => setReminders({ ...reminders, [key]: { ...reminders[key], ...time } })}
+              />
+            )}
+          </View>
+        ))}
       </Section>
 
       <Section title="プロジェクト">
@@ -126,6 +179,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
   },
@@ -134,6 +188,18 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 16,
+  },
+  reminderLabel: {
+    flex: 1,
+    gap: 2,
+  },
+  sub: {
+    fontSize: 12,
+  },
+  time: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 12,
   },
   projectName: {
     flexDirection: 'row',

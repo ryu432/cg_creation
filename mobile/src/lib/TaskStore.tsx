@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { defaultReminderSettings, ReminderSettings } from './notifications';
 import { DailyPlan, PlanUsage } from './plan';
 import { createProject, createTask, NewTask, normalizeTask, Project, Task } from './tasks';
 
@@ -8,6 +9,7 @@ const TASKS_KEY = 'plano.tasks.v1';
 const PROJECTS_KEY = 'plano.projects.v1';
 const PLAN_KEY = 'plano.plan.v1';
 const PLAN_USAGE_KEY = 'plano.planUsage.v1';
+const REMINDERS_KEY = 'plano.reminders.v1';
 
 type TaskStore = {
   tasks: Task[];
@@ -29,6 +31,8 @@ type TaskStore = {
   planUsage: PlanUsage | null;
   acceptPlan: (plan: DailyPlan) => void;
   recordPlanRequest: (date: string) => void;
+  reminders: ReminderSettings;
+  setReminders: (reminders: ReminderSettings) => void;
 };
 
 const TaskStoreContext = createContext<TaskStore | null>(null);
@@ -39,15 +43,17 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
+  const [reminders, setReminders] = useState<ReminderSettings>(defaultReminderSettings);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet([TASKS_KEY, PROJECTS_KEY, PLAN_KEY, PLAN_USAGE_KEY])
-      .then(([[, tasksJson], [, projectsJson], [, planJson], [, usageJson]]) => {
+    AsyncStorage.multiGet([TASKS_KEY, PROJECTS_KEY, PLAN_KEY, PLAN_USAGE_KEY, REMINDERS_KEY])
+      .then(([[, tasksJson], [, projectsJson], [, planJson], [, usageJson], [, remindersJson]]) => {
         if (tasksJson) setTasks((JSON.parse(tasksJson) as Task[]).map(normalizeTask));
         if (projectsJson) setProjects(JSON.parse(projectsJson));
         if (planJson) setPlan(JSON.parse(planJson));
         if (usageJson) setPlanUsage(JSON.parse(usageJson));
+        if (remindersJson) setReminders({ ...defaultReminderSettings, ...JSON.parse(remindersJson) });
       })
       .catch((e) => console.warn('データの読み込みに失敗しました', e))
       .finally(() => setLoaded(true));
@@ -79,6 +85,13 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       console.warn('利用回数の保存に失敗しました', e),
     );
   }, [planUsage, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    AsyncStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders)).catch((e) =>
+      console.warn('通知の設定の保存に失敗しました', e),
+    );
+  }, [reminders, loaded]);
 
   const addTask = useCallback((input: NewTask) => {
     if (!input.title.trim()) return;
@@ -170,6 +183,8 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       planUsage,
       acceptPlan,
       recordPlanRequest,
+      reminders,
+      setReminders,
     }),
     [
       tasks,
@@ -189,6 +204,8 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       planUsage,
       acceptPlan,
       recordPlanRequest,
+      reminders,
+      setReminders,
     ],
   );
 
