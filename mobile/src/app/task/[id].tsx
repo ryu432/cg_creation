@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
+import { Calendar } from '@/components/Calendar';
 import { Chip } from '@/components/Chip';
 import { useTheme } from '@/constants/theme';
 import { addDays, formatDueDate, today } from '@/lib/date';
@@ -16,6 +17,7 @@ export default function TaskDetailScreen() {
   const { tasks, projects, updateTask, toggleDone, removeTask } = useTasks();
   const task = tasks.find((t) => t.id === id);
   const [title, setTitle] = useState(task?.title ?? '');
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   if (!task) {
     return (
@@ -82,10 +84,23 @@ export default function TaskDetailScreen() {
               key={option.label}
               label={option.label}
               selected={task.dueDate === option.value}
-              onPress={() => updateTask(task.id, { dueDate: option.value })}
+              onPress={() => {
+                updateTask(task.id, { dueDate: option.value });
+                setCalendarOpen(false);
+              }}
             />
           ))}
+          <Chip label={calendarOpen ? '📅 閉じる' : '📅 日付を選ぶ'} onPress={() => setCalendarOpen((v) => !v)} />
         </View>
+        {calendarOpen && (
+          <Calendar
+            value={task.dueDate}
+            onSelect={(d) => {
+              updateTask(task.id, { dueDate: d });
+              setCalendarOpen(false);
+            }}
+          />
+        )}
       </View>
 
       <View style={styles.section}>

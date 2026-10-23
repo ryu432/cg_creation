@@ -16,7 +16,7 @@ export function addDays(dateString: string, days: number): string {
   return toDateString(new Date(y, m - 1, d + days));
 }
 
-// 期限の表示用ラベル（今日 / 明日 / 昨日 / 10/24(金) など）
+// 期限の表示用ラベル（今日 / 明日 / 昨日 / 10/24(金) / 2027/1/5(火) など）
 export function formatDueDate(dateString: string): string {
   const base = today();
   if (dateString === base) return '今日';
@@ -24,5 +24,7 @@ export function formatDueDate(dateString: string): string {
   if (dateString === addDays(base, -1)) return '昨日';
   const [y, m, d] = dateString.split('-').map(Number);
   const weekday = ['日', '月', '火', '水', '木', '金', '土'][new Date(y, m - 1, d).getDay()];
-  return `${m}/${d}(${weekday})`;
+  // 今年以外は年も付ける
+  const year = y === Number(base.slice(0, 4)) ? '' : `${y}/`;
+  return `${year}${m}/${d}(${weekday})`;
 }
