@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { ReactNode, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { openContact } from '@/components/HeaderActions';
 import { TimeEditor } from '@/components/TimeEditor';
 import { useTheme } from '@/constants/theme';
 import { exportBackup } from '@/lib/backup';
@@ -25,7 +26,7 @@ export default function SettingsScreen() {
 
   const toggleReminder = async (key: keyof ReminderSettings, on: boolean) => {
     if (on && !(await ensureNotificationPermission())) {
-      Alert.alert('通知が許可されていません', 'スマホの設定アプリから、Expo Go（Plano）の通知を許可してください。', [
+      Alert.alert('通知が許可されていません', 'スマホの設定アプリから、Plano の通知を許可してください。', [
         { text: 'キャンセル', style: 'cancel' },
         { text: '設定を開く', onPress: () => Linking.openSettings() },
       ]);
@@ -131,6 +132,11 @@ export default function SettingsScreen() {
         <ActionRow label="データを読み込む" onPress={() => router.push('/import')} />
         <ActionRow label="完了したタスクを削除" onPress={confirmClearCompleted} disabled={doneCount === 0} />
         <ActionRow label="すべてのデータを削除" onPress={confirmClearAll} disabled={tasks.length === 0} danger />
+      </Section>
+
+      <Section title="ヘルプ">
+        <ActionRow label="使い方（チュートリアル）" onPress={() => router.push('/tutorial')} />
+        <ActionRow label="お問い合わせ（準備中）" onPress={openContact} />
       </Section>
 
       <Section title="このアプリについて">

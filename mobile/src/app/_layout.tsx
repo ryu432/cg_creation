@@ -34,6 +34,20 @@ function NotificationEffects() {
   return null;
 }
 
+// 初めて開いたとき（チュートリアルを見ていなければ）チュートリアルを出す
+function OnboardingGate() {
+  const { onboarded, loaded } = useTasks();
+  const shown = useRef(false);
+
+  useEffect(() => {
+    if (!loaded || onboarded || shown.current) return;
+    shown.current = true;
+    router.push('/tutorial');
+  }, [loaded, onboarded]);
+
+  return null;
+}
+
 export default function RootLayout() {
   const theme = useTheme();
 
@@ -54,9 +68,11 @@ export default function RootLayout() {
         <Stack.Screen name="plan" options={{ title: '今日のプラン', presentation: 'modal' }} />
         <Stack.Screen name="review" options={{ title: '振り返り', presentation: 'modal' }} />
         <Stack.Screen name="import" options={{ title: 'データを読み込む', presentation: 'modal' }} />
+        <Stack.Screen name="tutorial" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       </Stack>
       {/* 通知が使える環境だけ（Web・Expo Go では使わない） */}
       {notificationsSupported() && <NotificationEffects />}
+      <OnboardingGate />
       <StatusBar style="auto" />
     </TaskStoreProvider>
   );

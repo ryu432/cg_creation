@@ -11,6 +11,7 @@ const PROJECTS_KEY = 'plano.projects.v1';
 const PLAN_KEY = 'plano.plan.v1';
 const PLAN_USAGE_KEY = 'plano.planUsage.v1';
 const REMINDERS_KEY = 'plano.reminders.v1';
+const ONBOARDED_KEY = 'plano.onboarded.v1';
 
 type TaskStore = {
   tasks: Task[];
@@ -40,6 +41,9 @@ type TaskStore = {
   recordPlanRequest: (date: string) => void;
   reminders: ReminderSettings;
   setReminders: (reminders: ReminderSettings) => void;
+  /** 初回のチュートリアルを見終わったか */
+  onboarded: boolean;
+  setOnboarded: (onboarded: boolean) => void;
 };
 
 const TaskStoreContext = createContext<TaskStore | null>(null);
@@ -51,16 +55,18 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [reminders, setReminders] = useState<ReminderSettings>(defaultReminderSettings);
+  const [onboarded, setOnboarded] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet([TASKS_KEY, PROJECTS_KEY, PLAN_KEY, PLAN_USAGE_KEY, REMINDERS_KEY])
-      .then(([[, tasksJson], [, projectsJson], [, planJson], [, usageJson], [, remindersJson]]) => {
+    AsyncStorage.multiGet([TASKS_KEY, PROJECTS_KEY, PLAN_KEY, PLAN_USAGE_KEY, REMINDERS_KEY, ONBOARDED_KEY])
+      .then(([[, tasksJson], [, projectsJson], [, planJson], [, usageJson], [, remindersJson], [, onboardedJson]]) => {
         if (tasksJson) setTasks((JSON.parse(tasksJson) as Task[]).map(normalizeTask));
         if (projectsJson) setProjects(JSON.parse(projectsJson));
         if (planJson) setPlan(JSON.parse(planJson));
         if (usageJson) setPlanUsage(JSON.parse(usageJson));
         if (remindersJson) setReminders({ ...defaultReminderSettings, ...JSON.parse(remindersJson) });
+        if (onboardedJson) setOnboarded(JSON.parse(onboardedJson) === true);
       })
       .catch((e) => console.warn('データの読み込みに失敗しました', e))
       .finally(() => setLoaded(true));
@@ -99,6 +105,11 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       console.warn('通知の設定の保存に失敗しました', e),
     );
   }, [reminders, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    AsyncStorage.setItem(ONBOARDED_KEY, JSON.stringify(onboarded)).catch(() => {});
+  }, [onboarded, loaded]);
 
   const addTask = useCallback((input: NewTask) => {
     if (!input.title.trim()) return;
@@ -221,6 +232,8 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       recordPlanRequest,
       reminders,
       setReminders,
+      onboarded,
+      setOnboarded,
     }),
     [
       tasks,
@@ -246,6 +259,8 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       recordPlanRequest,
       reminders,
       setReminders,
+      onboarded,
+      setOnboarded,
     ],
   );
 

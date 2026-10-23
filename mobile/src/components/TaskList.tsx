@@ -6,6 +6,7 @@ import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-
 import { useTheme } from '@/constants/theme';
 import { Task } from '@/lib/tasks';
 
+import { HeaderActions } from './HeaderActions';
 import { SelectionBar } from './SelectionBar';
 import { TaskItem } from './TaskItem';
 
@@ -49,7 +50,7 @@ export function TaskList({ tasks, header, emptyMessage, noteFor, addParams }: Pr
                 </Pressable>
               ),
           }
-        : { headerTitle: undefined, headerLeft: undefined, headerRight: undefined },
+        : { headerTitle: undefined, headerLeft: undefined, headerRight: () => <HeaderActions /> },
     );
   }, [navigation, selecting, selected.size, allSelected, tasks, theme]);
 
