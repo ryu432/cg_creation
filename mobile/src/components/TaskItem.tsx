@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
@@ -27,13 +28,23 @@ export function TaskItem({ task, note, selecting = false, selected = false, onTo
   const done = task.status === 'done';
   const overdue = isOverdue(task, date);
   const planned = !done && task.plannedDate === date;
+  const longPressed = useRef(false);
 
   return (
     <Pressable
-      onPress={() =>
-        selecting ? onToggleSelect?.() : router.push({ pathname: '/task/[id]', params: { id: task.id } })
-      }
-      onLongPress={selecting ? undefined : onToggleSelect}
+      onPressIn={() => {
+        longPressed.current = false;
+      }}
+      onPress={() => {
+        // 長押しのあと指を離したときはタップとして扱わない（選択モードに入った直後に選択が外れないように）
+        if (longPressed.current) return;
+        if (selecting) onToggleSelect?.();
+        else router.push({ pathname: '/task/[id]', params: { id: task.id } });
+      }}
+      onLongPress={() => {
+        longPressed.current = true;
+        onToggleSelect?.();
+      }}
       delayLongPress={350}
       style={({ pressed }) => [
         styles.row,
