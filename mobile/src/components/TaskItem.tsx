@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/constants/theme';
 import { formatDueDate, today } from '@/lib/date';
 import { formatMinutes } from '@/lib/plan';
+import { describeRule } from '@/lib/routines';
 import { isOverdue, Task } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
@@ -22,8 +23,10 @@ type Props = {
 
 export function TaskItem({ task, note, selecting = false, selected = false, onToggleSelect }: Props) {
   const theme = useTheme();
-  const { toggleDone, projects } = useTasks();
+  const { toggleDone, projects, routines } = useTasks();
   const project = task.projectId ? projects.find((p) => p.id === task.projectId) : undefined;
+  const routine = task.routineId ? routines.find((r) => r.id === task.routineId) : undefined;
+  const hasNote = task.note !== '';
   const date = today();
   const done = task.status === 'done';
   const overdue = isOverdue(task, date);
@@ -81,7 +84,7 @@ export function TaskItem({ task, note, selecting = false, selected = false, onTo
         >
           {task.title}
         </Text>
-        {(project || ((task.dueDate || planned || task.estimateMinutes !== null) && !done)) && (
+        {(project || ((task.dueDate || planned || task.estimateMinutes !== null || routine || hasNote) && !done)) && (
           <View style={styles.meta}>
             {project && (
               <View style={styles.project}>
@@ -100,6 +103,16 @@ export function TaskItem({ task, note, selecting = false, selected = false, onTo
             {task.estimateMinutes !== null && !done && (
               <Text style={[styles.metaText, { color: theme.subText }]}>
                 <Ionicons name="time-outline" size={12} /> {formatMinutes(task.estimateMinutes)}
+              </Text>
+            )}
+            {routine && !done && (
+              <Text style={[styles.metaText, { color: theme.subText }]}>
+                <Ionicons name="repeat" size={12} /> {describeRule(routine.rule)}
+              </Text>
+            )}
+            {hasNote && !done && (
+              <Text style={[styles.metaText, { color: theme.subText }]} accessibilityLabel="詳細あり">
+                <Ionicons name="document-text-outline" size={12} /> 詳細
               </Text>
             )}
             {planned && (

@@ -5,16 +5,21 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from
 
 import { Calendar } from '@/components/Calendar';
 import { Chip } from '@/components/Chip';
+import { RepeatEditor } from '@/components/RepeatEditor';
 import { useTheme } from '@/constants/theme';
 import { confirm } from '@/lib/confirm';
 import { addDays, formatDueDate, today } from '@/lib/date';
 import { formatMinutes } from '@/lib/plan';
+import { isValidRule, RepeatRule } from '@/lib/routines';
 import { estimateOptions } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
 /** 追加・編集画面で入力する内容（「登録」を押すまで保存しない下書き） */
 export type TaskDraft = {
   title: string;
+  note: string;
+  /** 繰り返し（ルーティン）。null なら単発のタスク */
+  repeat: RepeatRule | null;
   dueDate: string | null;
   estimateMinutes: number | null;
   projectId: string | null;
@@ -25,14 +30,17 @@ export type TaskDraft = {
 type Props = {
   initial: TaskDraft;
   submitLabel: string;
-  onSubmit: (draft: TaskDraft) => void;
-  /** 編集のときだけ渡す（削除ボタンを出す） */
-  onDelete?: () => void;
+  /** false を返すと画面を閉じない（「この回だけ／全体」の選択でキャンセルしたときなど） */
+  onSubmit: (draft: TaskDraft) => boolean | void | Promise<boolean | void>;
+  /** 編集のときだけ渡す（削除ボタンを出す）。確認は呼び出す側で行い、削除したら true */
+  onDelete?: () => Promise<boolean>;
 };
 
 function isSameDraft(a: TaskDraft, b: TaskDraft): boolean {
   return (
     a.title.trim() === b.title.trim() &&
+    a.note.trim() === b.note.trim() &&
+    JSON.stringify(a.repeat) === JSON.stringify(b.repeat) &&
     a.dueDate === b.dueDate &&
     a.estimateMinutes === b.estimateMinutes &&
     a.projectId === b.projectId &&
@@ -50,7 +58,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onDelete }: Props) {
   const set = (changes: Partial<TaskDraft>) => setDraft((d) => ({ ...d, ...changes }));
 
   const dirty = !isSameDraft(draft, initial);
-  const canSubmit = draft.title.trim().length > 0;
+  const canSubmit = draft.title.trim().length > 0 && (draft.repeat === null || isValidRule(draft.repeat));
 
   const allowLeave = usePreventRemove(dirty, ({ repeat }) => {
     confirm('変更を破棄しますか？', '入力した内容は保存されません。', '破棄する', true).then((ok) => {
@@ -63,18 +71,14 @@ export function TaskForm({ initial, submitLabel, onSubmit, onDelete }: Props) {
     router.back();
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSubmit) return;
-    onSubmit({ ...draft, title: draft.title.trim() });
-    leave();
+    const ok = await onSubmit({ ...draft, title: draft.title.trim(), note: draft.note.trim() });
+    if (ok !== false) leave();
   };
 
   const remove = async () => {
-    if (!onDelete) return;
-    if (await confirm('タスクを削除', `「${initial.title}」を削除します。`, '削除', true)) {
-      onDelete();
-      leave();
-    }
+    if (onDelete && (await onDelete())) leave();
   };
 
   // 「＋ 新規」で作ったプロジェクトを、この下書きで選んだ状態にする
@@ -121,7 +125,21 @@ export function TaskForm({ initial, submitLabel, onSubmit, onDelete }: Props) {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.label, { color: theme.subText }]}>期限</Text>
+        <Text style={[styles.label, { color: theme.subText }]}>詳細（任意）</Text>
+        <TextInput
+          value={draft.note}
+          onChangeText={(note) => set({ note })}
+          placeholder="メモ・やることの中身・URL など"
+          placeholderTextColor={theme.subText}
+          multiline
+          style={[styles.noteInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.label, { color: theme.subText }]}>
+          {draft.repeat ? '次の予定日（なしなら今日以降の最初の日）' : '期限'}
+        </Text>
         <View style={styles.chips}>
           {dueOptions.map((option) => (
             <Chip
@@ -145,6 +163,13 @@ export function TaskForm({ initial, submitLabel, onSubmit, onDelete }: Props) {
             }}
           />
         )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.label, { color: theme.subText }]}>
+          <Ionicons name="repeat" size={13} color={theme.subText} /> 繰り返し（ルーティン）
+        </Text>
+        <RepeatEditor value={draft.repeat} onChange={(repeat) => set({ repeat })} />
       </View>
 
       <View style={styles.section}>
@@ -261,6 +286,16 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     minHeight: 56,
+  },
+  noteInput: {
+    fontSize: 15,
+    lineHeight: 21,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: 72,
+    maxHeight: 160,
+    textAlignVertical: 'top',
   },
   chips: {
     flexDirection: 'row',

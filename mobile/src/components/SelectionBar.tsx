@@ -17,7 +17,7 @@ type Props = {
 // 選択モードの下に出る操作バー：まとめて完了・プロジェクトへ移動・削除（解除は画面上部の ← から）
 export function SelectionBar({ ids, onDone }: Props) {
   const theme = useTheme();
-  const { projects, completeTasks, updateTasks, removeTasks } = useTasks();
+  const { tasks, projects, completeTasks, updateTasks, removeTasks } = useTasks();
   const [moving, setMoving] = useState(false);
 
   const complete = () => {
@@ -31,7 +31,11 @@ export function SelectionBar({ ids, onDone }: Props) {
   };
 
   const remove = async () => {
-    if (await confirm('タスクを削除', `選んだ${ids.length}件のタスクを削除します。`, '削除', true)) {
+    const routineCount = tasks.filter((t) => ids.includes(t.id) && t.routineId && t.status === 'todo').length;
+    const message =
+      `選んだ${ids.length}件のタスクを削除します。` +
+      (routineCount > 0 ? `\nルーティンの回（${routineCount}件）は、この回だけ削除して次の回を作ります。` : '');
+    if (await confirm('タスクを削除', message, '削除', true)) {
       removeTasks(ids);
       onDone();
     }

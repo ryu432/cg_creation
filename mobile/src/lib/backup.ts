@@ -1,5 +1,6 @@
 import { defaultReminderSettings, ReminderSettings } from './notifications';
 import { defaultSplitSettings, SplitSettings } from './plan';
+import type { Routine } from './routines';
 import { normalizeTask, Project, Task } from './tasks';
 
 // データの書き出し・読み込み（バックアップ、別のアプリへの引っ越し用）。
@@ -11,6 +12,7 @@ export type BackupData = {
   reminders: ReminderSettings;
   /** 古い書き出しデータにはない */
   planSettings?: { split: SplitSettings };
+  routines?: Routine[];
 };
 
 const FORMAT = 'plano-backup';
@@ -75,5 +77,11 @@ export function parseBackup(text: string): BackupData {
       ? { split: { ...defaultSplitSettings, ...(raw.planSettings.split as Partial<SplitSettings>) } }
       : undefined;
 
-  return { tasks: tasks.map(normalizeTask), projects, reminders, planSettings };
+  const routines = Array.isArray(raw.routines)
+    ? raw.routines.filter(
+        (r): r is Routine => isObject(r) && typeof r.id === 'string' && typeof r.title === 'string' && isObject(r.rule),
+      )
+    : [];
+
+  return { tasks: tasks.map(normalizeTask), projects, reminders, planSettings, routines };
 }

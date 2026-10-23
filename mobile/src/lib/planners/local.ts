@@ -55,6 +55,11 @@ function reasonFor(task: Task, tier: Tier, date: string): string {
   if (tier >= Tier.PlannedToday && task.postponeCount >= 2) {
     return `${task.postponeCount}回先送りしています。少しだけでも手をつけましょう`;
   }
+  // ルーティンの回は、期限ではなく「予定日」として伝える
+  if (task.routineId) {
+    if (tier === Tier.Overdue) return `ルーティンの予定日が${daysBetween(task.dueDate!, date)}日過ぎています`;
+    if (tier === Tier.DueToday) return '今日のルーティンです';
+  }
   switch (tier) {
     case Tier.Overdue:
       return `期限が${daysBetween(task.dueDate!, date)}日過ぎています`;

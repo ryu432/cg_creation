@@ -6,13 +6,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendar } from '@/components/Calendar';
 import { useTheme } from '@/constants/theme';
 import { addDays, formatDueDate, today, toDateString } from '@/lib/date';
-import { isLeftoverTask, isOverdue, POSTPONE_WARNING_COUNT, sortTasks } from '@/lib/tasks';
+import { isLeftoverTask, isOverdue, POSTPONE_WARNING_COUNT, sortTasks, Task } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
 // 夜の振り返り。やり残したタスクを、明日に回す・期限を変える・今日やるから外す・完了にする
 export default function ReviewScreen() {
   const theme = useTheme();
-  const { tasks, projects, updateTask, toggleDone, postponeTask } = useTasks();
+  const { tasks, projects, updateTask, toggleDone, postponeTask, skipOccurrence } = useTasks();
   const date = today();
   const tomorrow = addDays(date, 1);
 
@@ -20,11 +20,13 @@ export default function ReviewScreen() {
   const [taskIds] = useState(() => sortTasks(tasks.filter((t) => isLeftoverTask(t, date))).map((t) => t.id));
   const [outcomes, setOutcomes] = useState<Record<string, string>>({});
   const [calendarFor, setCalendarFor] = useState<string | null>(null);
+  // スキップしたルーティンの回は一覧から消えるので、結果を見せるために控えておく
+  const [skipped, setSkipped] = useState<Record<string, Task>>({});
 
   const doneToday = tasks.filter(
     (t) => t.status === 'done' && t.completedAt !== null && toDateString(new Date(t.completedAt)) === date,
   ).length;
-  const rows = taskIds.map((id) => tasks.find((t) => t.id === id)).filter((t) => t !== undefined);
+  const rows = taskIds.map((id) => tasks.find((t) => t.id === id) ?? skipped[id]).filter((t) => t !== undefined);
   const pending = rows.filter((t) => !outcomes[t.id]);
 
   const setOutcome = (id: string, label: string) => {
@@ -109,6 +111,16 @@ export default function ReviewScreen() {
                     setOutcome(task.id, '完了にしました');
                   }}
                 />
+                {task.routineId && (
+                  <Action
+                    label="この回はスキップ"
+                    onPress={() => {
+                      setSkipped((prev) => ({ ...prev, [task.id]: task }));
+                      skipOccurrence(task.id);
+                      setOutcome(task.id, 'この回はスキップしました（次の回は作られます）');
+                    }}
+                  />
+                )}
               </View>
             )}
 

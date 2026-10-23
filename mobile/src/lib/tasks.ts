@@ -5,6 +5,8 @@ export type TaskStatus = 'todo' | 'done';
 export type Task = {
   id: string;
   title: string;
+  /** 詳細（任意のメモ） */
+  note: string;
   /** 期限（YYYY-MM-DD） */
   dueDate: string | null;
   /** 「今日やる」に入れた日（YYYY-MM-DD）。AIのプラン提案が入るまでは手動で選ぶ */
@@ -16,6 +18,8 @@ export type Task = {
   postponeCount: number;
   /** 大きいときに、プランで「30分だけ」のように区切って入れてよいか */
   allowSplit: boolean;
+  /** ルーティンの1回分なら、そのルーティンの id（予定日は dueDate） */
+  routineId: string | null;
   status: TaskStatus;
   createdAt: string;
   completedAt: string | null;
@@ -23,11 +27,13 @@ export type Task = {
 
 export type NewTask = {
   title: string;
+  note?: string;
   dueDate?: string | null;
   plannedDate?: string | null;
   projectId?: string | null;
   estimateMinutes?: number | null;
   allowSplit?: boolean;
+  routineId?: string | null;
 };
 
 export type Project = {
@@ -40,7 +46,7 @@ export type Project = {
 // プロジェクトの色（ライト / ダークどちらでも見やすい、彩度低めの色）
 export const projectColors = ['#F28C4B', '#E07A8B', '#9B8AD6', '#5B9BD5', '#4FAE9B', '#C9A94B'];
 
-function newId(): string {
+export function newId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -52,12 +58,14 @@ export function createTask(input: NewTask): Task {
   return {
     id: newId(),
     title: input.title.trim(),
+    note: input.note?.trim() ?? '',
     dueDate: input.dueDate ?? null,
     plannedDate: input.plannedDate ?? null,
     projectId: input.projectId ?? null,
     estimateMinutes: input.estimateMinutes ?? null,
     postponeCount: 0,
     allowSplit: input.allowSplit ?? true,
+    routineId: input.routineId ?? null,
     status: 'todo',
     createdAt: new Date().toISOString(),
     completedAt: null,
@@ -72,6 +80,8 @@ export function normalizeTask(task: Task): Task {
     estimateMinutes: task.estimateMinutes ?? null,
     postponeCount: task.postponeCount ?? 0,
     allowSplit: task.allowSplit ?? true,
+    routineId: task.routineId ?? null,
+    note: task.note ?? '',
   };
 }
 

@@ -9,17 +9,19 @@ import { openContact } from '@/components/HeaderActions';
 import { TimeEditor } from '@/components/TimeEditor';
 import { useTheme } from '@/constants/theme';
 import { exportBackup } from '@/lib/backup';
+import { formatDueDate } from '@/lib/date';
+import { describeRule } from '@/lib/routines';
 import { chunkOptions, SplitSettings, splitThresholdOptions } from '@/lib/plan';
 import { ensureNotificationPermission, formatTime, notificationsSupported, ReminderSettings } from '@/lib/notifications';
 import { useTasks } from '@/lib/TaskStore';
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const { tasks, projects, clearCompleted, clearAll, reminders, setReminders, planSettings, setPlanSettings } = useTasks();
+  const { tasks, projects, routines, clearCompleted, clearAll, reminders, setReminders, planSettings, setPlanSettings } = useTasks();
 
   // スマホの共有機能で送る（メモ・LINE・Google ドライブなど）。題名は本文に混ざることがあるので付けない
   const exportData = () => {
-    Share.share({ message: exportBackup({ tasks, projects, reminders, planSettings }) }).catch((e) =>
+    Share.share({ message: exportBackup({ tasks, projects, reminders, planSettings, routines }) }).catch((e) =>
       console.warn('書き出しに失敗しました', e),
     );
   };
@@ -151,6 +153,33 @@ export default function SettingsScreen() {
           </Text>
         )}
       </Section>
+
+      {routines.length > 0 && (
+        <Section title="ルーティン">
+          {routines.map((r) => {
+            const next = tasks.find((t) => t.routineId === r.id && t.status === 'todo');
+            return (
+              <Pressable
+                key={r.id}
+                disabled={!next}
+                onPress={() => next && router.push({ pathname: '/task/[id]', params: { id: next.id } })}
+                style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+              >
+                <View style={styles.reminderLabel}>
+                  <Text style={[styles.label, { color: theme.text }]} numberOfLines={1}>
+                    {r.title}
+                  </Text>
+                  <Text style={[styles.sub, { color: theme.subText }]}>
+                    {describeRule(r.rule)}
+                    {next?.dueDate ? `・次は${formatDueDate(next.dueDate)}` : ''}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.subText} />
+              </Pressable>
+            );
+          })}
+        </Section>
+      )}
 
       <Section title="プロジェクト">
         {projects.map((p) => (
