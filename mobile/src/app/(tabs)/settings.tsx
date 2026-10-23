@@ -14,9 +14,9 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const { tasks, projects, clearCompleted, clearAll, reminders, setReminders } = useTasks();
 
-  // スマホの共有機能で送る（メモ・LINE・Google ドライブなど）
+  // スマホの共有機能で送る（メモ・LINE・Google ドライブなど）。題名は本文に混ざることがあるので付けない
   const exportData = () => {
-    Share.share({ message: exportBackup({ tasks, projects, reminders }), title: 'Plano のデータ' }).catch((e) =>
+    Share.share({ message: exportBackup({ tasks, projects, reminders }) }).catch((e) =>
       console.warn('書き出しに失敗しました', e),
     );
   };

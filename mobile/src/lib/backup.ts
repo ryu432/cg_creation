@@ -23,13 +23,29 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+// 共有先のアプリやコピーで付いた余計なものを取り除く。
+// 先頭・末尾の題名などの文字（最初の { から最後の } までを使う）、見えない文字、全角や飾りの引用符、
+// メモアプリが折り返しで入れる改行（書き出した文字には改行が入らないので、消しても中身は変わらない）
+function cleanPastedText(text: string): string {
+  const normalized = text
+    .replace(/[\r\n\t]/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\uFF02]/g, '"');
+  const start = normalized.indexOf('{');
+  const end = normalized.lastIndexOf('}');
+  return start >= 0 && end > start ? normalized.slice(start, end + 1) : normalized.trim();
+}
+
 // 貼り付けられた文字列を検証して読み込む。形式が違えば BackupError
 export function parseBackup(text: string): BackupData {
   let raw: unknown;
   try {
-    raw = JSON.parse(text.trim());
+    raw = JSON.parse(cleanPastedText(text));
   } catch {
-    throw new BackupError('書き出したデータの形式ではありません。全部をそのまま貼り付けてください。');
+    throw new BackupError(
+      '読み込めませんでした。書き出したデータを、最初の「{"format"」から最後の「}」まで全部コピーして貼り付けてください。',
+    );
   }
   if (!isObject(raw) || raw.format !== FORMAT) {
     throw new BackupError('Plano のデータではないようです。');
