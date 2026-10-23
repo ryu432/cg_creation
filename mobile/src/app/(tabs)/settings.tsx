@@ -6,13 +6,14 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View }
 
 import { TimeEditor } from '@/components/TimeEditor';
 import { useTheme } from '@/constants/theme';
-import { ensureNotificationPermission, formatTime, ReminderSettings } from '@/lib/notifications';
+import { ensureNotificationPermission, formatTime, notificationsSupported, ReminderSettings } from '@/lib/notifications';
 import { useTasks } from '@/lib/TaskStore';
 
 export default function SettingsScreen() {
   const theme = useTheme();
   const { tasks, projects, clearCompleted, clearAll, reminders, setReminders } = useTasks();
   const [editingTime, setEditingTime] = useState<keyof ReminderSettings | null>(null);
+  const canNotify = notificationsSupported();
 
   const toggleReminder = async (key: keyof ReminderSettings, on: boolean) => {
     if (on && !(await ensureNotificationPermission())) {
@@ -66,12 +67,13 @@ export default function SettingsScreen() {
                 hitSlop={8}
                 accessibilityLabel={`${label}の時刻を変える`}
               >
-                <Text style={[styles.time, { color: reminders[key].enabled ? theme.primary : theme.subText }]}>
+                <Text style={[styles.time, { color: canNotify && reminders[key].enabled ? theme.primary : theme.subText }]}>
                   {formatTime(reminders[key])}
                 </Text>
               </Pressable>
               <Switch
-                value={reminders[key].enabled}
+                value={canNotify && reminders[key].enabled}
+                disabled={!canNotify}
                 onValueChange={(on) => toggleReminder(key, on)}
                 trackColor={{ true: theme.primary, false: theme.border }}
               />
@@ -85,6 +87,11 @@ export default function SettingsScreen() {
             )}
           </View>
         ))}
+        {!canNotify && (
+          <Text style={[styles.sub, styles.notice, { color: theme.subText }]}>
+            Expo Go では通知を使えません。Plano 専用のアプリで使えるようになります（時刻の設定は保存されます）。
+          </Text>
+        )}
       </Section>
 
       <Section title="プロジェクト">
@@ -195,6 +202,10 @@ const styles = StyleSheet.create({
   },
   sub: {
     fontSize: 12,
+  },
+  notice: {
+    lineHeight: 18,
+    paddingBottom: 14,
   },
   time: {
     fontSize: 16,

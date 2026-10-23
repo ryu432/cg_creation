@@ -1,10 +1,9 @@
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
-import { applyReminders, hasEnabledReminder, listenToNotificationTaps } from '@/lib/notifications';
+import { applyReminders, hasEnabledReminder, listenToNotificationTaps, notificationsSupported } from '@/lib/notifications';
 import { TaskStoreProvider, useTasks } from '@/lib/TaskStore';
 
 // 画面の表示中にエラーが起きたら、止まらずにエラー内容と「再試行」ボタンを出す
@@ -15,14 +14,15 @@ export { ErrorBoundary } from 'expo-router';
 function NotificationEffects() {
   const { reminders, loaded } = useTasks();
   const enabled = hasEnabledReminder(reminders);
-  const firstApply = useRef(true);
+  // 前回登録したときに通知がオンだったか（起動直後は「オフだった」とみなす）
+  const wasEnabled = useRef(false);
 
   useEffect(() => {
     if (!loaded) return;
-    // 起動直後で通知が全部オフなら何もしない。設定を変えたときは、オフにした分を取り消すため必ず登録し直す
-    const skip = firstApply.current && !enabled;
-    firstApply.current = false;
-    if (skip) return;
+    // 通知がずっとオフなら何もしない（時刻だけ変えたときも）。オフにしたときは取り消すために登録し直す
+    const shouldApply = enabled || wasEnabled.current;
+    wasEnabled.current = enabled;
+    if (!shouldApply) return;
     applyReminders(reminders).catch((e) => console.warn('通知の登録に失敗しました', e));
   }, [reminders, loaded, enabled]);
 
@@ -53,8 +53,8 @@ export default function RootLayout() {
         <Stack.Screen name="plan" options={{ title: '今日のプラン', presentation: 'modal' }} />
         <Stack.Screen name="review" options={{ title: '振り返り', presentation: 'modal' }} />
       </Stack>
-      {/* 通知はスマホだけ（Web では使えない API がある） */}
-      {Platform.OS !== 'web' && <NotificationEffects />}
+      {/* 通知が使える環境だけ（Web・Expo Go では使わない） */}
+      {notificationsSupported() && <NotificationEffects />}
       <StatusBar style="auto" />
     </TaskStoreProvider>
   );

@@ -1,3 +1,4 @@
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type * as NotificationsModule from 'expo-notifications';
 import { Platform } from 'react-native';
 
@@ -16,6 +17,14 @@ export const defaultReminderSettings: ReminderSettings = {
   morning: { enabled: false, hour: 7, minute: 30 },
   evening: { enabled: false, hour: 21, minute: 0 },
 };
+
+/**
+ * この環境で通知が使えるか。Expo Go（Android）では通知の部品を読み込むとアプリが落ちることがあるので使わない。
+ * Plano 専用のアプリ（開発用ビルド・ストア版）なら使える
+ */
+export function notificationsSupported(): boolean {
+  return Platform.OS !== 'web' && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+}
 
 export function hasEnabledReminder(settings: ReminderSettings): boolean {
   return settings.morning.enabled || settings.evening.enabled;
@@ -52,7 +61,7 @@ function loadNotifications(): Promise<typeof NotificationsModule> {
 
 /** 通知の許可を確認し、まだなら求める。許可されたら true */
 export async function ensureNotificationPermission(): Promise<boolean> {
-  if (Platform.OS === 'web') return false;
+  if (!notificationsSupported()) return false;
   try {
     const Notifications = await loadNotifications();
     const current = await Notifications.getPermissionsAsync();
@@ -68,7 +77,7 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 
 /** 設定に合わせて、毎日の通知を登録し直す */
 export async function applyReminders(settings: ReminderSettings): Promise<void> {
-  if (Platform.OS === 'web') return;
+  if (!notificationsSupported()) return;
   const Notifications = await loadNotifications();
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
@@ -102,7 +111,7 @@ function urlFromNotification(response: NotificationsModule.NotificationResponse)
  * 通知から起動した場合と、開いている間にタップした場合の両方。戻り値で受け取りをやめる
  */
 export function listenToNotificationTaps(onOpen: (url: string) => void): () => void {
-  if (Platform.OS === 'web') return () => {};
+  if (!notificationsSupported()) return () => {};
   let subscription: { remove: () => void } | null = null;
   let stopped = false;
 
