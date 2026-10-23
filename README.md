@@ -2,7 +2,8 @@
 
 「今日やること」をAIが理由つきで提案してくれるタスク管理アプリ。
 
-- 企画書: [docs/planning.md](docs/planning.md)
+- 仕様書（今できること）: [docs/spec.md](docs/spec.md)
+- 企画書・ロードマップ: [docs/planning.md](docs/planning.md)
 - アプリ本体: [mobile/](mobile/)（Expo + TypeScript）
 
 ## スマホで使う（Android）
