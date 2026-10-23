@@ -8,6 +8,8 @@ export type PlanTask = {
   dueDate: string | null;
   projectName: string | null;
   plannedToday: boolean;
+  /** ユーザーが設定した見積もり時間（分） */
+  estimateMinutes: number | null;
   createdAt: string;
 };
 
@@ -70,6 +72,10 @@ export function parsePlanRequest(body: unknown): PlanRequest {
       dueDate: asDate(t.dueDate),
       projectName: typeof t.projectName === 'string' ? t.projectName.slice(0, 50) : null,
       plannedToday: t.plannedToday === true,
+      estimateMinutes:
+        Number.isInteger(t.estimateMinutes) && (t.estimateMinutes as number) > 0
+          ? Math.min(t.estimateMinutes as number, 24 * 60)
+          : null,
       createdAt: typeof t.createdAt === 'string' ? t.createdAt.slice(0, 10) : '',
     };
   });
@@ -89,7 +95,7 @@ export const SYSTEM_PROMPT = `あなたはタスク管理アプリ「Plano」の
 - 一覧にないタスクを作らない。taskId は一覧の id をそのまま使う。
 
 各タスクについて:
-- estimateMinutes: タイトルから推定した所要時間（分、5分単位）。
+- estimateMinutes: 所要時間（分）。タスクに estimate があればその値をそのまま使い、なければタイトルから5分単位で推定する。
 - reason: なぜ今日それをやるのかを、日本語で40文字以内で具体的に書く（例:「金曜締切。今日進めないと間に合いません」）。
 
 comment: 今日のプラン全体についての一言を、日本語で60文字以内で、やさしく前向きに書く。
@@ -106,6 +112,7 @@ export function buildUserMessage(req: PlanRequest): string {
       due: t.dueDate,
       project: t.projectName,
       plannedToday: t.plannedToday,
+      estimate: t.estimateMinutes,
       created: t.createdAt,
     }),
   );

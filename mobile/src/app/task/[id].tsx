@@ -6,6 +6,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View
 import { Chip } from '@/components/Chip';
 import { useTheme } from '@/constants/theme';
 import { addDays, formatDueDate, today } from '@/lib/date';
+import { formatMinutes } from '@/lib/plan';
+import { estimateOptions } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
 export default function TaskDetailScreen() {
@@ -83,6 +85,29 @@ export default function TaskDetailScreen() {
               onPress={() => updateTask(task.id, { dueDate: option.value })}
             />
           ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.label, { color: theme.subText }]}>見積もり時間（任意）</Text>
+        <View style={styles.chips}>
+          <Chip
+            label="なし"
+            selected={task.estimateMinutes === null}
+            onPress={() => updateTask(task.id, { estimateMinutes: null })}
+          />
+          {estimateOptions.map((option) => (
+            <Chip
+              key={option.minutes}
+              label={option.label}
+              selected={task.estimateMinutes === option.minutes}
+              onPress={() => updateTask(task.id, { estimateMinutes: option.minutes })}
+            />
+          ))}
+          {/* 選択肢にない時間（AI の推定などで入った値）も表示する */}
+          {task.estimateMinutes !== null && !estimateOptions.some((o) => o.minutes === task.estimateMinutes) && (
+            <Chip label={formatMinutes(task.estimateMinutes)} selected onPress={() => {}} />
+          )}
         </View>
       </View>
 

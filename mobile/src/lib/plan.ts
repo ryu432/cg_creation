@@ -26,6 +26,8 @@ export type PlanItem = {
   taskId: string;
   estimateMinutes: number;
   reason: string;
+  /** タスクに見積もり時間がなく、仮の時間で計算したとき true */
+  estimateIsDefault?: boolean;
 };
 
 export type PlannerKind = 'local' | 'ai';

@@ -30,7 +30,12 @@ Deno.test('parsePlanRequest rejects bad input', () => {
 
 Deno.test('parsePlanRequest drops malformed optional fields', () => {
   const req = parsePlanRequest({ ...validBody, tasks: [{ id: 'a', title: ' x ', dueDate: 'soon', projectName: 3 }] });
-  assertEquals(req.tasks[0], { id: 'a', title: 'x', dueDate: null, projectName: null, plannedToday: false, createdAt: '' });
+  assertEquals(req.tasks[0], { id: 'a', title: 'x', dueDate: null, projectName: null, plannedToday: false, estimateMinutes: null, createdAt: '' });
+});
+
+Deno.test('parsePlanRequest keeps a valid estimate', () => {
+  const req = parsePlanRequest({ ...validBody, tasks: [{ id: 'a', title: 'x', estimateMinutes: 45 }, { id: 'b', title: 'y', estimateMinutes: -3 }] });
+  assertEquals(req.tasks.map((t) => t.estimateMinutes), [45, null]);
 });
 
 Deno.test('buildUserMessage includes the conditions and every task', () => {

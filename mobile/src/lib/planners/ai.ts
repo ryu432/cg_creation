@@ -29,6 +29,7 @@ export async function aiPlanner(input: PlanInput): Promise<PlanProposal> {
       dueDate: t.dueDate,
       projectName: input.projects.find((p) => p.id === t.projectId)?.name ?? null,
       plannedToday: t.plannedDate === input.date,
+      estimateMinutes: t.estimateMinutes,
       createdAt: t.createdAt,
     })),
   };

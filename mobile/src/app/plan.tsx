@@ -105,6 +105,7 @@ export default function PlanScreen() {
                   </Text>
                   <Text style={[styles.itemMeta, { color: theme.subText }]}>
                     約{formatMinutes(item.estimateMinutes)}
+                    {item.estimateIsDefault ? '（仮）' : ''}
                     {project ? `・${project.name}` : ''}
                   </Text>
                   {item.reason !== '' && (

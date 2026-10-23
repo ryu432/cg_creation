@@ -28,10 +28,15 @@ export default function TodayScreen() {
   const doneCount = todayTasks.filter((t) => t.status === 'done').length;
   const hasTodo = tasks.some((t) => t.status === 'todo');
 
-  const noteFor = (taskId: string) => {
-    const item = todayPlan?.items.find((i) => i.taskId === taskId);
+  // タスク自体に見積もり時間があれば行の上の段に出るので、ここではプランの時間を出さない
+  const noteFor = (task: Task) => {
+    const item = todayPlan?.items.find((i) => i.taskId === task.id);
     if (!item) return undefined;
-    return `約${formatMinutes(item.estimateMinutes)}${item.reason ? `・${item.reason}` : ''}`;
+    const time =
+      task.estimateMinutes === null
+        ? `約${formatMinutes(item.estimateMinutes)}${item.estimateIsDefault ? '（仮）' : ''}`
+        : '';
+    return [time, item.reason].filter(Boolean).join('・') || undefined;
   };
 
   const [, m, d] = date.split('-').map(Number);
@@ -40,7 +45,7 @@ export default function TodayScreen() {
   return (
     <TaskList
       tasks={todayTasks}
-      noteFor={(t) => noteFor(t.id)}
+      noteFor={noteFor}
       emptyMessage={'今日やることはまだありません。\nプランを作るか、上の欄から追加しましょう。'}
       header={
         <View style={styles.header}>

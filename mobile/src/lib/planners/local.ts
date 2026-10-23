@@ -4,14 +4,14 @@ import type { Task } from '../tasks';
 
 // 端末内のルールでプランを作る（無料・オフラインで動く）
 
-/** タスクに見積もり時間がまだないので、ひとまず1件あたりこの時間で計算する */
+/** 見積もり時間が設定されていないタスクは、この時間で計算する */
 export const DEFAULT_ESTIMATE_MINUTES = 30;
 
-// 体力・気分ごとの、選ぶ件数の上限と「使える時間」のうち埋める割合
-const ENERGY_RULES: Record<Energy, { maxItems: number; fillRatio: number }> = {
-  low: { maxItems: 3, fillRatio: 0.75 },
-  normal: { maxItems: 5, fillRatio: 1 },
-  high: { maxItems: 6, fillRatio: 1 },
+// 体力・気分ごとの、選ぶ件数の上限、「使える時間」のうち埋める割合、1件あたりの長さの上限（分）
+const ENERGY_RULES: Record<Energy, { maxItems: number; fillRatio: number; maxTaskMinutes: number | null }> = {
+  low: { maxItems: 3, fillRatio: 0.75, maxTaskMinutes: 60 },
+  normal: { maxItems: 5, fillRatio: 1, maxTaskMinutes: null },
+  high: { maxItems: 6, fillRatio: 1, maxTaskMinutes: null },
 };
 
 // 優先度の段階（小さいほど先に選ぶ）
@@ -91,11 +91,19 @@ export async function localPlanner(input: PlanInput): Promise<PlanProposal> {
   let total = 0;
   for (const { task, tier } of candidates) {
     if (items.length >= rule.maxItems) break;
-    const estimate = DEFAULT_ESTIMATE_MINUTES;
+    const estimate = task.estimateMinutes ?? DEFAULT_ESTIMATE_MINUTES;
     // 期限切れ・今日が期限のものは、時間を少し超えても入れる（合計が多いことは画面で知らせる）
     const mustDo = tier === Tier.Overdue || tier === Tier.DueToday;
-    if (!mustDo && items.length > 0 && total + estimate > budget) continue;
-    items.push({ taskId: task.id, estimateMinutes: estimate, reason: reasonFor(task, tier, date) });
+    if (!mustDo) {
+      if (rule.maxTaskMinutes !== null && estimate > rule.maxTaskMinutes) continue;
+      if (items.length > 0 && total + estimate > budget) continue;
+    }
+    items.push({
+      taskId: task.id,
+      estimateMinutes: estimate,
+      reason: reasonFor(task, tier, date),
+      estimateIsDefault: task.estimateMinutes === null,
+    });
     total += estimate;
   }
 

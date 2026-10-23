@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
 import { formatDueDate, today } from '@/lib/date';
+import { formatMinutes } from '@/lib/plan';
 import { isOverdue, Task } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
@@ -43,7 +44,7 @@ export function TaskItem({ task, note }: { task: Task; note?: string }) {
         >
           {task.title}
         </Text>
-        {(project || ((task.dueDate || planned) && !done)) && (
+        {(project || ((task.dueDate || planned || task.estimateMinutes !== null) && !done)) && (
           <View style={styles.meta}>
             {project && (
               <View style={styles.project}>
@@ -57,6 +58,11 @@ export function TaskItem({ task, note }: { task: Task; note?: string }) {
               <Text style={[styles.metaText, { color: overdue ? theme.danger : theme.subText }]}>
                 <Ionicons name="calendar-outline" size={12} /> {formatDueDate(task.dueDate)}
                 {overdue ? '（期限切れ）' : ''}
+              </Text>
+            )}
+            {task.estimateMinutes !== null && !done && (
+              <Text style={[styles.metaText, { color: theme.subText }]}>
+                <Ionicons name="time-outline" size={12} /> {formatMinutes(task.estimateMinutes)}
               </Text>
             )}
             {planned && (

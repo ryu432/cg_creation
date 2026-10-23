@@ -10,6 +10,8 @@ export type Task = {
   /** 「今日やる」に入れた日（YYYY-MM-DD）。AIのプラン提案が入るまでは手動で選ぶ */
   plannedDate: string | null;
   projectId: string | null;
+  /** 見積もり時間（分）。任意 */
+  estimateMinutes: number | null;
   status: TaskStatus;
   createdAt: string;
   completedAt: string | null;
@@ -20,6 +22,7 @@ export type NewTask = {
   dueDate?: string | null;
   plannedDate?: string | null;
   projectId?: string | null;
+  estimateMinutes?: number | null;
 };
 
 export type Project = {
@@ -47,6 +50,7 @@ export function createTask(input: NewTask): Task {
     dueDate: input.dueDate ?? null,
     plannedDate: input.plannedDate ?? null,
     projectId: input.projectId ?? null,
+    estimateMinutes: input.estimateMinutes ?? null,
     status: 'todo',
     createdAt: new Date().toISOString(),
     completedAt: null,
@@ -55,8 +59,16 @@ export function createTask(input: NewTask): Task {
 
 // 古いバージョンで保存されたタスクに、後から増えた項目を補う
 export function normalizeTask(task: Task): Task {
-  return { ...task, projectId: task.projectId ?? null };
+  return { ...task, projectId: task.projectId ?? null, estimateMinutes: task.estimateMinutes ?? null };
 }
+
+export const estimateOptions = [
+  { label: '15分', minutes: 15 },
+  { label: '30分', minutes: 30 },
+  { label: '1時間', minutes: 60 },
+  { label: '2時間', minutes: 120 },
+  { label: '半日', minutes: 240 },
+];
 
 export function isOverdue(task: Task, date: string): boolean {
   return task.status === 'todo' && task.dueDate !== null && task.dueDate < date;
