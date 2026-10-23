@@ -16,6 +16,8 @@ type TaskStore = {
   addTask: (input: NewTask) => void;
   updateTask: (id: string, changes: Partial<Omit<Task, 'id'>>) => void;
   toggleDone: (id: string) => void;
+  /** 「今日やる」を別の日に移す。先送りの回数も数える */
+  postponeTask: (id: string, toDate: string) => void;
   removeTask: (id: string) => void;
   clearCompleted: () => void;
   clearAll: () => void;
@@ -99,6 +101,12 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const postponeTask = useCallback((id: string, toDate: string) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, plannedDate: toDate, postponeCount: t.postponeCount + 1 } : t)),
+    );
+  }, []);
+
   const removeTask = useCallback((id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
@@ -151,6 +159,7 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       addTask,
       updateTask,
       toggleDone,
+      postponeTask,
       removeTask,
       clearCompleted,
       clearAll,
@@ -169,6 +178,7 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       addTask,
       updateTask,
       toggleDone,
+      postponeTask,
       removeTask,
       clearCompleted,
       clearAll,

@@ -7,7 +7,7 @@ import { TaskList } from '@/components/TaskList';
 import { useTheme } from '@/constants/theme';
 import { today } from '@/lib/date';
 import { formatMinutes } from '@/lib/plan';
-import { isTodayTask, sortTasks, Task } from '@/lib/tasks';
+import { isMissedPlannedTask, isTodayTask, sortTasks, Task } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
 export default function TodayScreen() {
@@ -27,6 +27,18 @@ export default function TodayScreen() {
   });
   const doneCount = todayTasks.filter((t) => t.status === 'done').length;
   const hasTodo = tasks.some((t) => t.status === 'todo');
+
+  // 振り返りのカード: 前の日までのやり残しがあるとき、または18時以降で今日のタスクが残っているとき
+  const EVENING_HOUR = 18;
+  const missedCount = tasks.filter((t) => isMissedPlannedTask(t, date)).length;
+  const todayTodoCount = todayTasks.length - doneCount;
+  const isEvening = new Date().getHours() >= EVENING_HOUR;
+  const review =
+    missedCount > 0
+      ? { title: 'やり残しがあります', sub: `前の日までの「今日やる」が${missedCount}件残っています` }
+      : isEvening && todayTodoCount > 0
+        ? { title: '今日を振り返る', sub: `残り${todayTodoCount}件をどうするか決めましょう` }
+        : null;
 
   // タスク自体に見積もり時間があれば行の上の段に出るので、ここではプランの時間を出さない
   const noteFor = (task: Task) => {
@@ -59,6 +71,23 @@ export default function TodayScreen() {
               </Text>
             )}
           </View>
+
+          {review && (
+            <Pressable
+              onPress={() => router.push('/review')}
+              style={({ pressed }) => [
+                styles.reviewCard,
+                { backgroundColor: theme.surface, borderColor: theme.primary, opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <Ionicons name="moon" size={20} color={theme.primary} />
+              <View style={styles.planButtonBody}>
+                <Text style={[styles.planButtonTitle, { color: theme.text }]}>{review.title}</Text>
+                <Text style={[styles.reviewSub, { color: theme.subText }]}>{review.sub}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.subText} />
+            </Pressable>
+          )}
 
           {todayPlan ? (
             <View style={[styles.planCard, { backgroundColor: theme.primarySoft }]}>
@@ -128,6 +157,17 @@ const styles = StyleSheet.create({
   planButtonSub: {
     fontSize: 13,
     opacity: 0.9,
+  },
+  reviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  reviewSub: {
+    fontSize: 13,
   },
   planCard: {
     padding: 14,

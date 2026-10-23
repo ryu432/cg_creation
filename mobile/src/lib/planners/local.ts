@@ -41,6 +41,10 @@ function tierOf(task: Task, date: string): Tier {
 }
 
 function reasonFor(task: Task, tier: Tier, date: string): string {
+  // 期限が迫っていないのに何度も先送りしているものは、そのことを伝える
+  if (tier >= Tier.PlannedToday && task.postponeCount >= 2) {
+    return `${task.postponeCount}回先送りしています。少しだけでも手をつけましょう`;
+  }
   switch (tier) {
     case Tier.Overdue:
       return `期限が${daysBetween(task.dueDate!, date)}日過ぎています`;

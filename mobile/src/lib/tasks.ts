@@ -12,6 +12,8 @@ export type Task = {
   projectId: string | null;
   /** 見積もり時間（分）。任意 */
   estimateMinutes: number | null;
+  /** 振り返りで「明日に回す」を選んだ回数 */
+  postponeCount: number;
   status: TaskStatus;
   createdAt: string;
   completedAt: string | null;
@@ -51,6 +53,7 @@ export function createTask(input: NewTask): Task {
     plannedDate: input.plannedDate ?? null,
     projectId: input.projectId ?? null,
     estimateMinutes: input.estimateMinutes ?? null,
+    postponeCount: 0,
     status: 'todo',
     createdAt: new Date().toISOString(),
     completedAt: null,
@@ -59,7 +62,12 @@ export function createTask(input: NewTask): Task {
 
 // 古いバージョンで保存されたタスクに、後から増えた項目を補う
 export function normalizeTask(task: Task): Task {
-  return { ...task, projectId: task.projectId ?? null, estimateMinutes: task.estimateMinutes ?? null };
+  return {
+    ...task,
+    projectId: task.projectId ?? null,
+    estimateMinutes: task.estimateMinutes ?? null,
+    postponeCount: task.postponeCount ?? 0,
+  };
 }
 
 export const estimateOptions = [
@@ -84,6 +92,23 @@ export function isTodayTask(task: Task, date: string): boolean {
     return task.completedAt !== null && toDateString(new Date(task.completedAt)) === date;
   }
   return task.plannedDate === date || (task.dueDate !== null && task.dueDate <= date);
+}
+
+/** この回数以上先送りしたタスクには、分けるか見直すよう声をかける */
+export const POSTPONE_WARNING_COUNT = 3;
+
+/**
+ * 振り返りの対象になる、やり残したタスク。
+ * 今日以前に「今日やる」にしたもの、期限が今日以前のもので、まだ終わっていないもの
+ */
+export function isLeftoverTask(task: Task, date: string): boolean {
+  if (task.status !== 'todo') return false;
+  return (task.plannedDate !== null && task.plannedDate <= date) || (task.dueDate !== null && task.dueDate <= date);
+}
+
+/** 前の日までに「今日やる」にしたまま終わらなかったタスク（今日の画面には出ないので拾い上げる） */
+export function isMissedPlannedTask(task: Task, date: string): boolean {
+  return task.status === 'todo' && task.plannedDate !== null && task.plannedDate < date;
 }
 
 // 未完了 → 完了の順。未完了は期限が近い順（期限なしは最後）、同じなら作成順
