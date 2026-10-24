@@ -15,6 +15,7 @@ import { formatDueDate, today } from '@/lib/date';
 import { describeRule } from '@/lib/routines';
 import { chunkOptions, SplitSettings, splitThresholdOptions } from '@/lib/plan';
 import { ensureNotificationPermission, formatTime, notificationsSupported, ReminderSettings } from '@/lib/notifications';
+import { promptInstall, useInstallState } from '@/lib/pwa';
 import { useTasks } from '@/lib/TaskStore';
 import { copyText, downloadText } from '@/lib/webFiles';
 
@@ -45,6 +46,7 @@ export default function SettingsScreen() {
     setPlanSettings({ ...planSettings, split: { ...split, ...changes } });
   const [editingTime, setEditingTime] = useState<keyof ReminderSettings | null>(null);
   const canNotify = notificationsSupported();
+  const install = useInstallState();
 
   const toggleReminder = async (key: keyof ReminderSettings, on: boolean) => {
     if (on && !(await ensureNotificationPermission())) {
@@ -215,6 +217,24 @@ export default function SettingsScreen() {
         <ActionRow label="＋ プロジェクトを追加" onPress={() => router.push('/project/edit')} />
       </Section>
 
+      {Platform.OS === 'web' && (
+        <Section title="ホーム画面に追加">
+          <View style={styles.options}>
+            <Text style={[styles.label, styles.installTitle, { color: theme.text }]}>
+              {install.standalone ? 'ホーム画面から使っています ✓' : 'アプリのように使う'}
+            </Text>
+            <Text style={[styles.sub, styles.installText, { color: theme.subText }]}>
+              {install.standalone
+                ? 'データはこの端末のこのアプリの中に保存されています。ときどき「データを書き出す」でバックアップしておくと安心です。'
+                : install.ios
+                  ? 'Safari の共有ボタン（□に↑）→「ホーム画面に追加」。しばらく開かなくてもデータが消えにくくなります。'
+                  : 'ブラウザのメニュー（︙）→「ホーム画面に追加」または「アプリをインストール」。パソコンの Chrome・Edge でもアドレス欄の右のボタンから追加できます。'}
+            </Text>
+          </View>
+          {!install.standalone && install.canPrompt && <ActionRow label="ホーム画面に追加する" onPress={promptInstall} />}
+        </Section>
+      )}
+
       <Section title="データ">
         <ActionRow label="データを書き出す（バックアップ）" onPress={exportData} />
         <ActionRow label="データを読み込む" onPress={() => router.push('/import')} />
@@ -315,6 +335,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  installTitle: {
+    paddingTop: 14,
+  },
+  installText: {
+    lineHeight: 18,
   },
   notice: {
     lineHeight: 18,

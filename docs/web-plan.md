@@ -1,6 +1,6 @@
 # Plano Web 版 構想
 
-> 作成日：2026-10-24　状態：W2 完了（公開中：https://plano.expo.app）
+> 作成日：2026-10-24　状態：W3 完了（公開中：https://plano.expo.app）
 
 ## 1. 目的
 
@@ -89,6 +89,12 @@ W1〜W3 は今の仕組みの延長で、追加の費用なしでできる。W4 
 - パソコンでは最大 640px の幅で中央に表示（`mobile/src/app/_layout.tsx` の WebFrame）
 - 確認ダイアログは `mobile/src/lib/confirm.ts` の confirm / choose / notify を使う。スマホは Alert、Web はアプリ内のダイアログ（`DialogHost`）。`Alert.alert` を直接使うと Web では何も出ないので使わない
 - Web の書き出しは「ファイルに保存／コピー」、読み込みは「ファイルを選ぶ／貼り付け」（`mobile/src/lib/webFiles.ts`）
+- ホーム画面に追加（PWA）：`mobile/public/` の `index.html`（Web のページの元）・`manifest.json`・`icons/`・`sw.js`
+  - `sw.js`（サービスワーカー）は公開のたびに全ファイルを保存し直し、電波がなくても開けるようにする。ページはネット優先なので、更新は次に開いたときに届く
+  - 公開時に `scripts/web-precache.js` が保存するファイルの一覧（`precache.json`）を作り、`sw.js` に版を書き込む
+  - iPhone の Safari ではホーム画面に追加していないと「今日」画面に案内を出す（× で閉じられる。設定の「ホーム画面に追加」からいつでも見られる）。Android の Chrome などはボタンで追加できる
+  - ブラウザにデータを消さないよう頼む（`navigator.storage.persist`。Firefox は確認が出るので頼まない）
+  - アイコンは今のアプリと同じ（Expo の仮アイコン）。Plano のアイコンを作ったら差し替える
 - Web では右上の「選択」で選択モードに入れる。タスク名の欄で Enter を押すと登録・保存（変換中の Enter は除く）
 
 ## 9. 決めること

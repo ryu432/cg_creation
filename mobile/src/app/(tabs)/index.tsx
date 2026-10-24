@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { InstallCard } from '@/components/InstallCard';
 import { TaskList } from '@/components/TaskList';
 import { useTheme } from '@/constants/theme';
 import { today } from '@/lib/date';
@@ -69,6 +70,8 @@ export default function TodayScreen() {
               </Text>
             )}
           </View>
+
+          <InstallCard />
 
           {review && (
             <Pressable

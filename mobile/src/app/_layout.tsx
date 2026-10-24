@@ -5,6 +5,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import { DialogHost } from '@/components/DialogHost';
 import { useTheme } from '@/constants/theme';
+import { requestPersistentStorage } from '@/lib/pwa';
 import { applyReminders, hasEnabledReminder, listenToNotificationTaps, notificationsSupported } from '@/lib/notifications';
 import { TaskStoreProvider, useTasks } from '@/lib/TaskStore';
 
@@ -63,6 +64,8 @@ function WebFrame({ children }: { children: ReactNode }) {
 
 export default function RootLayout() {
   const theme = useTheme();
+  // Web 版のデータを消されにくくする
+  useEffect(requestPersistentStorage, []);
 
   return (
     <TaskStoreProvider>

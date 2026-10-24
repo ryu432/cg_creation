@@ -41,5 +41,9 @@ jobs:
       - name: Export web
         run: npx expo export --platform web
 
+      # オフラインで開けるように、書き出したファイルの一覧を作り、sw.js に今回の版を書き込む
+      - name: Prepare offline files
+        run: node scripts/web-precache.js dist
+
       - name: Deploy
         run: eas deploy --prod --non-interactive
