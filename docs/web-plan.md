@@ -1,6 +1,6 @@
 # Plano Web 版 構想
 
-> 作成日：2026-10-24　状態：構想（未着手）
+> 作成日：2026-10-24　状態：W1 完了（公開中：https://plano.expo.app）
 
 ## 1. 目的
 
@@ -81,8 +81,15 @@ iPhone は「ホーム画面に追加」したときだけ通知を受け取れ�
 
 W1〜W3 は今の仕組みの延長で、追加の費用なしでできる。W4 から先はサーバーが必要（Supabase の無料枠で始められる見込み）。
 
-## 8. 決めること
+## 8. しくみのメモ
 
-- [ ] 公開先（おすすめ：EAS Hosting）
+- Web 用の設定（`platforms` に web、`web.output: single`）は `mobile/app.config.js` で **`PLANO_WEB=1` のときだけ** 足す。
+  `app.json` を変えると Android アプリの版（runtimeVersion）が変わり、入っているアプリに更新が届かなくなるため
+- Web の書き出しは `PLANO_WEB=1 EXPO_NO_WEB_SETUP=1 npx expo export --platform web`
+- パソコンでは最大 640px の幅で中央に表示（`mobile/src/app/_layout.tsx` の WebFrame）
+
+## 9. 決めること
+
+- [x] 公開先：EAS Hosting（`.github/workflows/web-deploy.yml`。mobile/ へのプッシュで自動公開）
 - [ ] 最初に Web 版を使う人（自分がパソコンで使う／iPhone の友人に配る）→ W2・W3 のどちらを先にするかが変わる
 - [ ] 同期（W4）をいつやるか：Web 版の公開後すぐ／しばらくバックアップで様子を見る
