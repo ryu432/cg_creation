@@ -6,6 +6,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } fr
 import { useTheme } from '@/constants/theme';
 import { BackupError, parseBackup } from '@/lib/backup';
 import { confirm } from '@/lib/confirm';
+import { useSync } from '@/lib/sync/SyncProvider';
 import { useTasks } from '@/lib/TaskStore';
 import { pickTextFile } from '@/lib/webFiles';
 
@@ -14,6 +15,7 @@ import { pickTextFile } from '@/lib/webFiles';
 export default function ImportScreen() {
   const theme = useTheme();
   const { tasks, replaceAll } = useTasks();
+  const { email } = useSync();
   const [text, setText] = useState('');
   const [editing, setEditing] = useState(true);
 
@@ -43,7 +45,8 @@ export default function ImportScreen() {
       tasks.length > 0
         ? `タスク${data.tasks.length}件・プロジェクト${data.projects.length}件を読み込みます。今の${tasks.length}件のタスクは消えて、置き換わります。`
         : `タスク${data.tasks.length}件・プロジェクト${data.projects.length}件を読み込みます。`;
-    if (await confirm('データを読み込む', message, '読み込む', tasks.length > 0)) {
+    const synced = email ? '\nログイン中なので、ほかの端末のデータも置き換わります。' : '';
+    if (await confirm('データを読み込む', message + synced, '読み込む', tasks.length > 0)) {
       replaceAll(data);
       router.back();
     }

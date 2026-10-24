@@ -16,6 +16,7 @@ import { describeRule } from '@/lib/routines';
 import { chunkOptions, SplitSettings, splitThresholdOptions } from '@/lib/plan';
 import { ensureNotificationPermission, formatTime, notificationsSupported, ReminderSettings } from '@/lib/notifications';
 import { promptInstall, useInstallState } from '@/lib/pwa';
+import { SyncStatus, useSync } from '@/lib/sync/SyncProvider';
 import { useTasks } from '@/lib/TaskStore';
 import { copyText, downloadText } from '@/lib/webFiles';
 
@@ -47,6 +48,40 @@ export default function SettingsScreen() {
   const [editingTime, setEditingTime] = useState<keyof ReminderSettings | null>(null);
   const canNotify = notificationsSupported();
   const install = useInstallState();
+  const sync = useSync();
+
+  const signIn = () =>
+    sync.signIn().catch((e) => notify('ログインできませんでした', e instanceof Error ? e.message : String(e)));
+
+  const confirmSignOut = async () => {
+    const how = await choose('ログアウト', 'この端末のタスクはどうしますか？（アカウントのデータはサーバーに残ります）', [
+      { label: 'この端末に残す', value: 'keep' },
+      { label: 'この端末から消す', value: 'clear', destructive: true },
+    ]);
+    if (!how) return;
+    // まだ送っていない変更を送ってから
+    await sync.syncNow();
+    await sync.signOut(how === 'keep');
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (
+      !(await confirm(
+        'アカウントを削除',
+        'サーバーにあるタスクなどのデータと、アカウントをすべて削除します。元に戻せません。この端末のタスクは残ります。',
+        '削除へ進む',
+        true,
+      ))
+    )
+      return;
+    if (!(await confirm('本当に削除しますか？', 'ほかの端末からも、同期したデータが見られなくなります。', '削除する', true))) return;
+    try {
+      await sync.deleteAccount();
+      notify('アカウントを削除しました', 'この端末のタスクは残っています。');
+    } catch (e) {
+      notify('削除できませんでした', e instanceof Error ? e.message : String(e));
+    }
+  };
 
   const toggleReminder = async (key: keyof ReminderSettings, on: boolean) => {
     if (on && !(await ensureNotificationPermission())) {
@@ -66,13 +101,51 @@ export default function SettingsScreen() {
   };
 
   const confirmClearAll = async () => {
-    if (await confirm('すべてのデータを削除', 'すべてのタスクとプロジェクトを削除します。元に戻せません。', 'すべて削除', true)) {
+    const message =
+      'すべてのタスクとプロジェクトを削除します。元に戻せません。' +
+      (sync.email ? '\nログイン中なので、ほかの端末からも消えます。' : '');
+    if (await confirm('すべてのデータを削除', message, 'すべて削除', true)) {
       clearAll();
     }
   };
 
   return (
     <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={styles.content}>
+      {sync.available && (
+        <Section title="アカウント">
+          {sync.email ? (
+            <>
+              <View style={styles.row}>
+                <Text style={[styles.label, styles.noShrink, { color: theme.text }]}>ログイン中</Text>
+                <Text style={[styles.value, styles.email, { color: theme.subText }]} numberOfLines={1}>
+                  {sync.email}
+                </Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={[styles.label, { color: theme.text }]}>同期</Text>
+                <Text style={[styles.value, { color: sync.status === 'error' ? theme.danger : theme.subText }]}>
+                  {syncStatusText(sync.status, sync.lastSyncedAt)}
+                </Text>
+              </View>
+              <ActionRow label="今すぐ同期" onPress={sync.syncNow} disabled={sync.status === 'syncing'} />
+              <ActionRow label="ログアウト" onPress={confirmSignOut} />
+              <ActionRow label="アカウントを削除" onPress={confirmDeleteAccount} danger />
+            </>
+          ) : (
+            <>
+              <View style={styles.options}>
+                <Text style={[styles.label, styles.installTitle, { color: theme.text }]}>スマホとパソコンで同じタスクを使う</Text>
+                <Text style={[styles.sub, styles.installText, { color: theme.subText }]}>
+                  ログインすると、タスクがサーバーに保存され、ほかの端末と自動でそろいます。データは本人しか見られません。
+                  今この端末にあるタスクも、そのまま引き継がれます。
+                </Text>
+              </View>
+              <ActionRow label="Google でログイン" onPress={signIn} />
+            </>
+          )}
+        </Section>
+      )}
+
       <Section title="タスク">
         <Row label="未完了" value={`${todoCount}件`} />
         <Row label="完了" value={`${doneCount}件`} />
@@ -258,6 +331,21 @@ export default function SettingsScreen() {
   );
 }
 
+function syncStatusText(status: SyncStatus, lastSyncedAt: Date | null): string {
+  switch (status) {
+    case 'syncing':
+      return '同期中…';
+    case 'offline':
+      return 'オフライン（つながったら送ります）';
+    case 'error':
+      return '同期できませんでした';
+    default:
+      return lastSyncedAt
+        ? `${lastSyncedAt.getHours()}:${String(lastSyncedAt.getMinutes()).padStart(2, '0')} に同期`
+        : '準備中';
+  }
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const theme = useTheme();
   return (
@@ -335,6 +423,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  noShrink: {
+    flexShrink: 0,
+  },
+  email: {
+    flexShrink: 1,
+    marginLeft: 16,
   },
   installTitle: {
     paddingTop: 14,

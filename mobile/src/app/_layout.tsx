@@ -6,6 +6,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { DialogHost } from '@/components/DialogHost';
 import { useTheme } from '@/constants/theme';
 import { requestPersistentStorage } from '@/lib/pwa';
+import { SyncProvider } from '@/lib/sync/SyncProvider';
 import { applyReminders, hasEnabledReminder, listenToNotificationTaps, notificationsSupported } from '@/lib/notifications';
 import { TaskStoreProvider, useTasks } from '@/lib/TaskStore';
 
@@ -69,30 +70,33 @@ export default function RootLayout() {
 
   return (
     <TaskStoreProvider>
-      <WebFrame>
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: theme.background },
-            headerTintColor: theme.text,
-            headerShadowVisible: false,
-            contentStyle: { backgroundColor: theme.background },
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="task/new" options={{ title: 'タスクの追加', presentation: 'modal' }} />
-          <Stack.Screen name="task/[id]" options={{ title: 'タスクの編集', presentation: 'modal' }} />
-          <Stack.Screen name="project/edit" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="plan" options={{ title: '今日のプラン', presentation: 'modal' }} />
-          <Stack.Screen name="review" options={{ title: '振り返り', presentation: 'modal' }} />
-          <Stack.Screen name="import" options={{ title: 'データを読み込む', presentation: 'modal' }} />
-          <Stack.Screen name="tutorial" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        </Stack>
-      </WebFrame>
-      <DialogHost />
-      {/* 通知が使える環境だけ（Web・Expo Go では使わない） */}
-      {notificationsSupported() && <NotificationEffects />}
-      <OnboardingGate />
-      <StatusBar style="auto" />
+      <SyncProvider>
+        <WebFrame>
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: theme.background },
+              headerTintColor: theme.text,
+              headerShadowVisible: false,
+              contentStyle: { backgroundColor: theme.background },
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="task/new" options={{ title: 'タスクの追加', presentation: 'modal' }} />
+            <Stack.Screen name="task/[id]" options={{ title: 'タスクの編集', presentation: 'modal' }} />
+            <Stack.Screen name="project/edit" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="plan" options={{ title: '今日のプラン', presentation: 'modal' }} />
+            <Stack.Screen name="review" options={{ title: '振り返り', presentation: 'modal' }} />
+            <Stack.Screen name="import" options={{ title: 'データを読み込む', presentation: 'modal' }} />
+            <Stack.Screen name="tutorial" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+          </Stack>
+        </WebFrame>
+        <DialogHost />
+        {/* 通知が使える環境だけ（Web・Expo Go では使わない） */}
+        {notificationsSupported() && <NotificationEffects />}
+        <OnboardingGate />
+        <StatusBar style="auto" />
+      </SyncProvider>
     </TaskStoreProvider>
   );
 }

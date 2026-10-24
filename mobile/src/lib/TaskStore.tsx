@@ -6,6 +6,7 @@ import { defaultReminderSettings, ReminderSettings } from './notifications';
 import { DailyPlan, defaultSplitSettings, PlanUsage, SplitSettings } from './plan';
 import { today } from './date';
 import { addNextOccurrences, createOccurrence, firstOccurrence, RepeatRule, Routine } from './routines';
+import { applyList, recordKey, RemoteChanges } from './sync/records';
 import { createProject, createTask, newId, NewTask, normalizeTask, Project, Task } from './tasks';
 
 const TASKS_KEY = 'plano.tasks.v1';
@@ -65,6 +66,8 @@ type TaskStore = {
   /** 自動プランの設定（大きいタスクの区切り方など） */
   planSettings: PlanSettings;
   setPlanSettings: (settings: PlanSettings) => void;
+  /** 同期でサーバーから届いた変更を当てはめる */
+  applyRemoteChanges: (changes: RemoteChanges) => void;
   /** 初回のチュートリアルを見終わったか */
   onboarded: boolean;
   setOnboarded: (onboarded: boolean) => void;
@@ -72,7 +75,7 @@ type TaskStore = {
 
 const TaskStoreContext = createContext<TaskStore | null>(null);
 
-// タスクとプロジェクトをスマホ本体（AsyncStorage）に保存する。ログイン・同期は Phase 1 の後半で Supabase に置き換える
+// タスクとプロジェクトをスマホ本体（AsyncStorage）に保存する。ログインしているときは SyncProvider がサーバーとそろえる
 export function TaskStoreProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -380,6 +383,16 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
     setPlanUsage((prev) => (prev?.date === date ? { date, count: prev.count + 1 } : { date, count: 1 }));
   }, []);
 
+  const applyRemoteChanges = useCallback((changes: RemoteChanges) => {
+    setTasks((prev) => applyList(prev, 'task', changes, (v) => normalizeTask(v as Task)));
+    setProjects((prev) => applyList(prev, 'project', changes, (v) => v as Project));
+    setRoutines((prev) => applyList(prev, 'routine', changes, (v) => v as Routine));
+    const settings = changes.get(recordKey('setting', 'planSettings')) as Partial<PlanSettings> | null | undefined;
+    if (settings) setPlanSettings({ split: { ...defaultSplitSettings, ...settings.split } });
+    const planKey = recordKey('setting', 'plan');
+    if (changes.has(planKey)) setPlan((changes.get(planKey) as { plan?: DailyPlan | null } | null)?.plan ?? null);
+  }, []);
+
   const value = useMemo(
     () => ({
       tasks,
@@ -416,6 +429,7 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       setPlanSettings,
       onboarded,
       setOnboarded,
+      applyRemoteChanges,
     }),
     [
       tasks,
@@ -452,6 +466,7 @@ export function TaskStoreProvider({ children }: { children: ReactNode }) {
       setPlanSettings,
       onboarded,
       setOnboarded,
+      applyRemoteChanges,
     ],
   );
 
