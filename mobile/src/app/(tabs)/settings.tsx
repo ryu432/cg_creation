@@ -2,28 +2,43 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { ReactNode, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { Chip } from '@/components/Chip';
 import { openContact } from '@/components/HeaderActions';
 import { TimeEditor } from '@/components/TimeEditor';
+import { Toggle } from '@/components/Toggle';
 import { useTheme } from '@/constants/theme';
 import { exportBackup } from '@/lib/backup';
-import { formatDueDate } from '@/lib/date';
+import { choose, confirm, notify } from '@/lib/confirm';
+import { formatDueDate, today } from '@/lib/date';
 import { describeRule } from '@/lib/routines';
 import { chunkOptions, SplitSettings, splitThresholdOptions } from '@/lib/plan';
 import { ensureNotificationPermission, formatTime, notificationsSupported, ReminderSettings } from '@/lib/notifications';
 import { useTasks } from '@/lib/TaskStore';
+import { copyText, downloadText } from '@/lib/webFiles';
 
 export default function SettingsScreen() {
   const theme = useTheme();
   const { tasks, projects, routines, clearCompleted, clearAll, reminders, setReminders, planSettings, setPlanSettings } = useTasks();
 
   // スマホの共有機能で送る（メモ・LINE・Google ドライブなど）。題名は本文に混ざることがあるので付けない
-  const exportData = () => {
-    Share.share({ message: exportBackup({ tasks, projects, reminders, planSettings, routines }) }).catch((e) =>
-      console.warn('書き出しに失敗しました', e),
-    );
+  const exportData = async () => {
+    const text = exportBackup({ tasks, projects, reminders, planSettings, routines });
+    if (Platform.OS !== 'web') {
+      Share.share({ message: text }).catch((e) => console.warn('書き出しに失敗しました', e));
+      return;
+    }
+    // Web はファイルに保存するか、コピーしてメモなどに貼る
+    const how = await choose('データを書き出す', 'バックアップの保存方法を選んでください。', [
+      { label: 'ファイルに保存', value: 'file' },
+      { label: 'コピーする', value: 'copy' },
+    ]);
+    if (how === 'file') downloadText(`plano-backup-${today()}.json`, text);
+    if (how === 'copy') {
+      if (await copyText(text)) notify('コピーしました', 'メモなどに貼り付けて保存してください。');
+      else notify('コピーできませんでした', '「ファイルに保存」を試してください。');
+    }
   };
   const split = planSettings.split;
   const setSplit = (changes: Partial<SplitSettings>) =>
@@ -44,18 +59,14 @@ export default function SettingsScreen() {
   const todoCount = tasks.filter((t) => t.status === 'todo').length;
   const doneCount = tasks.length - todoCount;
 
-  const confirmClearCompleted = () => {
-    Alert.alert('完了したタスクを削除', `${doneCount}件の完了したタスクを削除します。`, [
-      { text: 'キャンセル', style: 'cancel' },
-      { text: '削除', style: 'destructive', onPress: clearCompleted },
-    ]);
+  const confirmClearCompleted = async () => {
+    if (await confirm('完了したタスクを削除', `${doneCount}件の完了したタスクを削除します。`, '削除', true)) clearCompleted();
   };
 
-  const confirmClearAll = () => {
-    Alert.alert('すべてのデータを削除', 'すべてのタスクとプロジェクトを削除します。元に戻せません。', [
-      { text: 'キャンセル', style: 'cancel' },
-      { text: 'すべて削除', style: 'destructive', onPress: clearAll },
-    ]);
+  const confirmClearAll = async () => {
+    if (await confirm('すべてのデータを削除', 'すべてのタスクとプロジェクトを削除します。元に戻せません。', 'すべて削除', true)) {
+      clearAll();
+    }
   };
 
   return (
@@ -71,11 +82,9 @@ export default function SettingsScreen() {
             <Text style={[styles.label, { color: theme.text }]}>大きいタスクを区切って入れる</Text>
             <Text style={[styles.sub, { color: theme.subText }]}>今日の時間に入らないとき「30分だけ」のように進める</Text>
           </View>
-          <Switch
+          <Toggle
             value={split.enabled}
             onValueChange={(enabled) => setSplit({ enabled })}
-            trackColor={{ true: theme.primary, false: theme.border }}
-            thumbColor="#FFFFFF"
           />
         </View>
         {split.enabled && (
@@ -131,11 +140,10 @@ export default function SettingsScreen() {
                   {formatTime(reminders[key])}
                 </Text>
               </Pressable>
-              <Switch
+              <Toggle
                 value={canNotify && reminders[key].enabled}
                 disabled={!canNotify}
                 onValueChange={(on) => toggleReminder(key, on)}
-                trackColor={{ true: theme.primary, false: theme.border }}
               />
             </View>
             {editingTime === key && (
@@ -149,7 +157,9 @@ export default function SettingsScreen() {
         ))}
         {!canNotify && (
           <Text style={[styles.sub, styles.notice, { color: theme.subText }]}>
-            Expo Go では通知を使えません。Plano 専用のアプリで使えるようになります（時刻の設定は保存されます）。
+            {Platform.OS === 'web'
+              ? 'Web 版ではまだ通知を使えません（今後対応予定です）。'
+              : 'Expo Go では通知を使えません。Plano 専用のアプリで使えるようになります（時刻の設定は保存されます）。'}
           </Text>
         )}
       </Section>

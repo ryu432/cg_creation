@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ReactNode, useEffect, useRef } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
+import { DialogHost } from '@/components/DialogHost';
 import { useTheme } from '@/constants/theme';
 import { applyReminders, hasEnabledReminder, listenToNotificationTaps, notificationsSupported } from '@/lib/notifications';
 import { TaskStoreProvider, useTasks } from '@/lib/TaskStore';
@@ -84,6 +85,7 @@ export default function RootLayout() {
           <Stack.Screen name="tutorial" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         </Stack>
       </WebFrame>
+      <DialogHost />
       {/* 通知が使える環境だけ（Web・Expo Go では使わない） */}
       {notificationsSupported() && <NotificationEffects />}
       <OnboardingGate />

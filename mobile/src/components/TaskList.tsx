@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useNavigation } from 'expo-router';
 import { ReactElement, useEffect, useLayoutEffect, useState } from 'react';
-import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
 import { Task } from '@/lib/tasks';
@@ -23,9 +23,14 @@ type Props = {
 export function TaskList({ tasks, header, emptyMessage, noteFor, addParams }: Props) {
   const theme = useTheme();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const selecting = selected.size > 0;
+  // Web（パソコン）は長押ししにくいので、右上の「選択」から0件の状態で選択モードに入れる
+  const [selectMode, setSelectMode] = useState(false);
+  const selecting = selectMode || selected.size > 0;
   const navigation = useNavigation();
-  const clearSelection = () => setSelected(new Set());
+  const clearSelection = () => {
+    setSelected(new Set());
+    setSelectMode(false);
+  };
   const allSelected = selecting && selected.size === tasks.length;
 
   // 選択モードの間は、画面上部を「← N件を選択中 … すべて選択」にする（iPhone でも戻るボタンで解除できるように）
@@ -50,7 +55,20 @@ export function TaskList({ tasks, header, emptyMessage, noteFor, addParams }: Pr
                 </Pressable>
               ),
           }
-        : { headerTitle: undefined, headerLeft: undefined, headerRight: () => <HeaderActions /> },
+        : {
+            headerTitle: undefined,
+            headerLeft: undefined,
+            headerRight: () => (
+              <View style={styles.headerRow}>
+                {Platform.OS === 'web' && tasks.length > 0 && (
+                  <Pressable onPress={() => setSelectMode(true)} hitSlop={12} accessibilityLabel="タスクを選択">
+                    <Text style={[styles.headerLink, { color: theme.primary }]}>選択</Text>
+                  </Pressable>
+                )}
+                <HeaderActions />
+              </View>
+            ),
+          },
     );
   }, [navigation, selecting, selected.size, allSelected, tasks, theme]);
 
@@ -144,6 +162,11 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     paddingHorizontal: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   headerLink: {
     fontSize: 15,

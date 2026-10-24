@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, usePreventRemove } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Calendar } from '@/components/Calendar';
 import { Chip } from '@/components/Chip';
 import { RepeatEditor } from '@/components/RepeatEditor';
+import { Toggle } from '@/components/Toggle';
 import { useTheme } from '@/constants/theme';
 import { confirm } from '@/lib/confirm';
 import { addDays, formatDueDate, today } from '@/lib/date';
@@ -120,6 +121,8 @@ export function TaskForm({ initial, submitLabel, onSubmit, onDelete }: Props) {
           autoFocus={initial.title === ''}
           multiline
           submitBehavior="blurAndSubmit"
+          // Web（パソコン）では Enter で登録・保存する（変換中の Enter は除く。Shift+Enter は改行）
+          {...(Platform.OS === 'web' ? ({ blurOnSubmit: true, onSubmitEditing: submit } as object) : null)}
           style={[styles.titleInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
         />
       </View>
@@ -203,11 +206,9 @@ export function TaskForm({ initial, submitLabel, onSubmit, onDelete }: Props) {
                   オフにすると、プランに入れるときは全部の時間をとります（途中で止められない用事など）
                 </Text>
               </View>
-              <Switch
+              <Toggle
                 value={draft.allowSplit}
                 onValueChange={(allowSplit) => set({ allowSplit })}
-                trackColor={{ true: theme.primary, false: theme.border }}
-                thumbColor="#FFFFFF"
               />
             </View>
           </View>
@@ -241,11 +242,9 @@ export function TaskForm({ initial, submitLabel, onSubmit, onDelete }: Props) {
           <Text style={[styles.rowText, { color: theme.text }]}>
             <Ionicons name="sunny-outline" size={16} color={theme.primary} /> 今日やる
           </Text>
-          <Switch
+          <Toggle
             value={draft.plannedToday}
             onValueChange={(plannedToday) => set({ plannedToday })}
-            trackColor={{ true: theme.primary, false: theme.border }}
-            thumbColor="#FFFFFF"
           />
         </View>
       </View>

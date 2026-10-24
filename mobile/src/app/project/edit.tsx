@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
+import { confirm } from '@/lib/confirm';
 import { projectColors } from '@/lib/tasks';
 import { useTasks } from '@/lib/TaskStore';
 
@@ -27,23 +28,15 @@ export default function ProjectEditScreen() {
   const confirmRemove = () => {
     if (!project) return;
     const count = tasks.filter((t) => t.projectId === project.id).length;
-    Alert.alert(
-      'プロジェクトを削除',
+    const message =
       count > 0
         ? `「${project.name}」を削除します。中の${count}件のタスクは消えずに「プロジェクトなし」になります。`
-        : `「${project.name}」を削除します。`,
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '削除',
-          style: 'destructive',
-          onPress: () => {
-            removeProject(project.id);
-            router.back();
-          },
-        },
-      ],
-    );
+        : `「${project.name}」を削除します。`;
+    confirm('プロジェクトを削除', message, '削除', true).then((ok) => {
+      if (!ok) return;
+      removeProject(project.id);
+      router.back();
+    });
   };
 
   return (

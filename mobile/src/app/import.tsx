@@ -1,12 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
 import { BackupError, parseBackup } from '@/lib/backup';
 import { confirm } from '@/lib/confirm';
 import { useTasks } from '@/lib/TaskStore';
+import { pickTextFile } from '@/lib/webFiles';
 
 // 書き出したデータを貼り付けて読み込む。今のデータは置き換わる。
 // 入力欄は高さを固定し（長い文字は欄の中でスクロール）、読み込める文字を貼ったら要約だけ表示して欄を畳む
@@ -28,6 +29,14 @@ export default function ImportScreen() {
   const data = result?.data ?? null;
   const showInput = editing || !data;
 
+  // Web では、書き出したファイルを選んで読み込める
+  const pickFile = async () => {
+    const content = await pickTextFile();
+    if (content === null) return;
+    setText(content);
+    setEditing(false);
+  };
+
   const load = async () => {
     if (!data) return;
     const message =
@@ -47,8 +56,17 @@ export default function ImportScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <Text style={[styles.help, { color: theme.subText }]}>
-        「データを書き出す」で送った文字を、全部コピーして下の欄に貼り付けてください。
+        {Platform.OS === 'web'
+          ? '「データを書き出す」で保存したファイルを選ぶか、コピーした文字を下の欄に貼り付けてください。'
+          : '「データを書き出す」で送った文字を、全部コピーして下の欄に貼り付けてください。'}
       </Text>
+
+      {Platform.OS === 'web' && showInput && (
+        <Pressable onPress={pickFile} style={[styles.fileButton, { borderColor: theme.primary }]}>
+          <Ionicons name="document-outline" size={18} color={theme.primary} />
+          <Text style={[styles.fileButtonText, { color: theme.primary }]}>ファイルを選ぶ</Text>
+        </Pressable>
+      )}
 
       {showInput ? (
         <TextInput
@@ -57,7 +75,7 @@ export default function ImportScreen() {
             setText(t);
             setEditing(false);
           }}
-          placeholder="ここを長押しして「貼り付け」"
+          placeholder={Platform.OS === 'web' ? 'ここに貼り付け' : 'ここを長押しして「貼り付け」'}
           placeholderTextColor={theme.subText}
           multiline
           scrollEnabled
@@ -103,6 +121,19 @@ export default function ImportScreen() {
 }
 
 const styles = StyleSheet.create({
+  fileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  fileButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   content: {
     padding: 16,
     gap: 16,

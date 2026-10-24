@@ -1,6 +1,6 @@
 # Plano Web 版 構想
 
-> 作成日：2026-10-24　状態：W1 完了（公開中：https://plano.expo.app）
+> 作成日：2026-10-24　状態：W2 完了（公開中：https://plano.expo.app）
 
 ## 1. 目的
 
@@ -87,6 +87,9 @@ W1〜W3 は今の仕組みの延長で、追加の費用なしでできる。W4 
   `app.json` を変えると Android アプリの版（runtimeVersion）が変わり、入っているアプリに更新が届かなくなるため
 - Web の書き出しは `PLANO_WEB=1 EXPO_NO_WEB_SETUP=1 npx expo export --platform web`
 - パソコンでは最大 640px の幅で中央に表示（`mobile/src/app/_layout.tsx` の WebFrame）
+- 確認ダイアログは `mobile/src/lib/confirm.ts` の confirm / choose / notify を使う。スマホは Alert、Web はアプリ内のダイアログ（`DialogHost`）。`Alert.alert` を直接使うと Web では何も出ないので使わない
+- Web の書き出しは「ファイルに保存／コピー」、読み込みは「ファイルを選ぶ／貼り付け」（`mobile/src/lib/webFiles.ts`）
+- Web では右上の「選択」で選択モードに入れる。タスク名の欄で Enter を押すと登録・保存（変換中の Enter は除く）
 
 ## 9. 決めること
 

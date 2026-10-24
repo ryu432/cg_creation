@@ -1,12 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
+import { notify } from '@/lib/confirm';
 
 /** お問い合わせ（まだ窓口がないので、準備中と知らせるだけ） */
 export function openContact() {
-  Alert.alert('お問い合わせ', 'お問い合わせの窓口は準備中です。');
+  notify('お問い合わせ', 'お問い合わせの窓口は準備中です。');
 }
 
 // 画面右上のボタン：使い方（チュートリアル）とお問い合わせ

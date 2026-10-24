@@ -20,7 +20,11 @@ export function SelectionBar({ ids, onDone }: Props) {
   const { tasks, projects, completeTasks, updateTasks, removeTasks } = useTasks();
   const [moving, setMoving] = useState(false);
 
+  // 「選択」から入ってまだ何も選んでいないときは、操作しない
+  const none = ids.length === 0;
+
   const complete = () => {
+    if (none) return;
     completeTasks(ids);
     onDone();
   };
@@ -31,6 +35,7 @@ export function SelectionBar({ ids, onDone }: Props) {
   };
 
   const remove = async () => {
+    if (none) return;
     const routineCount = tasks.filter((t) => ids.includes(t.id) && t.routineId && t.status === 'todo').length;
     const message =
       `選んだ${ids.length}件のタスクを削除します。` +
@@ -53,14 +58,15 @@ export function SelectionBar({ ids, onDone }: Props) {
       )}
 
       <View style={styles.actions}>
-        <Action icon="checkmark-circle-outline" label="完了にする" onPress={complete} />
+        <Action icon="checkmark-circle-outline" label="完了にする" onPress={complete} disabled={none} />
         <Action
           icon="folder-outline"
           label={moving ? '移動先を選ぶ' : 'プロジェクトへ'}
-          onPress={() => setMoving((v) => !v)}
+          onPress={() => !none && setMoving((v) => !v)}
           active={moving}
+          disabled={none}
         />
-        <Action icon="trash-outline" label="削除" onPress={remove} danger />
+        <Action icon="trash-outline" label="削除" onPress={remove} danger disabled={none} />
       </View>
     </View>
   );
@@ -72,13 +78,15 @@ function Action(props: {
   onPress: () => void;
   danger?: boolean;
   active?: boolean;
+  disabled?: boolean;
 }) {
   const theme = useTheme();
   const color = props.danger ? theme.danger : props.active ? theme.primary : theme.text;
   return (
     <Pressable
       onPress={props.onPress}
-      style={({ pressed }) => [styles.action, { opacity: pressed ? 0.6 : 1 }]}
+      disabled={props.disabled}
+      style={({ pressed }) => [styles.action, { opacity: props.disabled ? 0.4 : pressed ? 0.6 : 1 }]}
       accessibilityLabel={props.label}
     >
       <Ionicons name={props.icon} size={24} color={color} />
