@@ -1,0 +1,45 @@
+# mobile/ に変更をプッシュすると、Web 版を書き出して EAS Hosting で公開する。
+# Web 用の設定は app.config.js が PLANO_WEB=1 のときだけ足す（Android アプリの版を変えないため）。
+# 公開した URL はこのワークフローのログの最後に表示される
+name: Web Deploy
+
+on:
+  push:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/web-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      PLANO_WEB: '1'
+      # app.json だけを見る Web の事前チェックを飛ばす（Web の設定は app.config.js で足している）
+      EXPO_NO_WEB_SETUP: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Export web
+        run: npx expo export --platform web
+
+      - name: Deploy
+        run: eas deploy --prod --non-interactive

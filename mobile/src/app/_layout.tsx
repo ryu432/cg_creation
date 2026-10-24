@@ -1,6 +1,7 @@
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
 import { applyReminders, hasEnabledReminder, listenToNotificationTaps, notificationsSupported } from '@/lib/notifications';
@@ -48,28 +49,41 @@ function OnboardingGate() {
   return null;
 }
 
+// Web 版をパソコンの広い画面で開いたときは、スマホくらいの幅で中央に表示する
+function WebFrame({ children }: { children: ReactNode }) {
+  const theme = useTheme();
+  if (Platform.OS !== 'web') return children;
+  return (
+    <View style={[styles.webOuter, { backgroundColor: theme.surface }]}>
+      <View style={[styles.webInner, { backgroundColor: theme.background, borderColor: theme.border }]}>{children}</View>
+    </View>
+  );
+}
+
 export default function RootLayout() {
   const theme = useTheme();
 
   return (
     <TaskStoreProvider>
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: theme.background },
-          headerTintColor: theme.text,
-          headerShadowVisible: false,
-          contentStyle: { backgroundColor: theme.background },
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="task/new" options={{ title: 'タスクの追加', presentation: 'modal' }} />
-        <Stack.Screen name="task/[id]" options={{ title: 'タスクの編集', presentation: 'modal' }} />
-        <Stack.Screen name="project/edit" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="plan" options={{ title: '今日のプラン', presentation: 'modal' }} />
-        <Stack.Screen name="review" options={{ title: '振り返り', presentation: 'modal' }} />
-        <Stack.Screen name="import" options={{ title: 'データを読み込む', presentation: 'modal' }} />
-        <Stack.Screen name="tutorial" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-      </Stack>
+      <WebFrame>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: theme.background },
+          }}
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="task/new" options={{ title: 'タスクの追加', presentation: 'modal' }} />
+          <Stack.Screen name="task/[id]" options={{ title: 'タスクの編集', presentation: 'modal' }} />
+          <Stack.Screen name="project/edit" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="plan" options={{ title: '今日のプラン', presentation: 'modal' }} />
+          <Stack.Screen name="review" options={{ title: '振り返り', presentation: 'modal' }} />
+          <Stack.Screen name="import" options={{ title: 'データを読み込む', presentation: 'modal' }} />
+          <Stack.Screen name="tutorial" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        </Stack>
+      </WebFrame>
       {/* 通知が使える環境だけ（Web・Expo Go では使わない） */}
       {notificationsSupported() && <NotificationEffects />}
       <OnboardingGate />
@@ -77,3 +91,17 @@ export default function RootLayout() {
     </TaskStoreProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  webOuter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  webInner: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 640,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+  },
+});
