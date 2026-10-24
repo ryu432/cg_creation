@@ -1,6 +1,6 @@
 # supabase/ に変更をプッシュすると、練習用のデータベースを GitHub の上で立ち上げて安全確認のテストを流す。
 # 「他人のデータを読めない・書けない」ことを毎回確かめ、失敗したら本番には反映しない。
-# 本番の Supabase の設定（SUPABASE_PROJECT_REF・SUPABASE_ACCESS_TOKEN・SUPABASE_DB_PASSWORD）があれば、
+# 本番の Supabase の設定（SUPABASE_PROJECT_REF・SUPABASE_DB_PASSWORD）があれば、
 # テストが通ったあとに本番のデータベースへ反映する。
 # 手動で動かすときは「check」（反映せずに、つながるか・何が反映されるかだけ確かめる）を選べる。
 name: Supabase DB
@@ -48,7 +48,7 @@ jobs:
       - name: Check settings
         id: settings
         run: |
-          if [ -z "$SUPABASE_PROJECT_REF" ] || [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ] || [ -z "${{ secrets.SUPABASE_DB_PASSWORD }}" ]; then
+          if [ -z "$SUPABASE_PROJECT_REF" ] || [ -z "${{ secrets.SUPABASE_DB_PASSWORD }}" ]; then
             echo "::notice::本番の Supabase の設定がまだないため、反映をスキップします"
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
@@ -60,18 +60,33 @@ jobs:
         with:
           version: latest
 
+      # アカウント用のトークンは使わず、データベースのパスワードだけで直接つなぐ（東京の接続口）
       - name: Push migrations
         if: steps.settings.outputs.ready == 'true'
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           # 手動で check を選んだときは、反映せずに表示だけ（--dry-run）
           MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
         run: |
-          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          # パスワードに記号があっても使えるように変換し、ログには出さない
+          ENCODED=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          echo "::add-mask::$ENCODED"
+          # 接続口の名前はプロジェクトを作った時期で違うので、順に試す
+          DB_URL=""
+          for HOST in aws-1-ap-northeast-1.pooler.supabase.com aws-0-ap-northeast-1.pooler.supabase.com; do
+            URL="postgresql://postgres.${SUPABASE_PROJECT_REF}:${ENCODED}@${HOST}:5432/postgres"
+            echo "接続口 ${HOST} を試します"
+            if supabase db push --db-url "$URL" --dry-run; then
+              DB_URL="$URL"
+              break
+            fi
+          done
+          if [ -z "$DB_URL" ]; then
+            echo "::error::データベースにつなげませんでした（パスワードかプロジェクト ID を確かめてください）"
+            exit 1
+          fi
           if [ "$MODE" = "check" ]; then
-            echo "::notice::確かめるだけ（反映はしません）"
-            supabase db push --dry-run
+            echo "::notice::確かめるだけ（反映はしていません）"
           else
-            supabase db push
+            supabase db push --db-url "$DB_URL"
           fi
