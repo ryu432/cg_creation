@@ -68,12 +68,12 @@ jobs:
           # 手動で check を選んだときは、反映せずに表示だけ（--dry-run）
           MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
         run: |
-          # パスワードに記号があっても使えるように変換し、ログには出さない
-          ENCODED=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          # パスワードに記号があっても使えるように変換し（貼り付けで付いた前後の空白・改行は除く）、ログには出さない
+          ENCODED=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"].strip(), safe=""))')
           echo "::add-mask::$ENCODED"
           # 接続口の名前はプロジェクトを作った時期で違うので、順に試す
           DB_URL=""
-          for HOST in aws-1-ap-northeast-1.pooler.supabase.com aws-0-ap-northeast-1.pooler.supabase.com; do
+          for HOST in aws-0-ap-northeast-1.pooler.supabase.com aws-1-ap-northeast-1.pooler.supabase.com; do
             URL="postgresql://postgres.${SUPABASE_PROJECT_REF}:${ENCODED}@${HOST}:5432/postgres"
             echo "接続口 ${HOST} を試します"
             if supabase db push --db-url "$URL" --dry-run; then
