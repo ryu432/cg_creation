@@ -1,0 +1,64 @@
+# supabase/ に変更をプッシュすると、練習用のデータベースを GitHub の上で立ち上げて安全確認のテストを流す。
+# 「他人のデータを読めない・書けない」ことを毎回確かめ、失敗したら本番には反映しない。
+# 本番の Supabase の設定（SUPABASE_PROJECT_REF・SUPABASE_ACCESS_TOKEN・SUPABASE_DB_PASSWORD）があれば、
+# テストが通ったあとに本番のデータベースへ反映する。
+name: Supabase DB
+
+on:
+  push:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/supabase-db.yml'
+  workflow_dispatch:
+
+env:
+  # Supabase のプロジェクト ID（Project Settings > General の Project ID）。秘密の情報ではない
+  SUPABASE_PROJECT_REF: ''
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Start local database
+        run: supabase db start
+
+      - name: Security tests
+        run: supabase test db
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check settings
+        id: settings
+        run: |
+          if [ -z "$SUPABASE_PROJECT_REF" ] || [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ] || [ -z "${{ secrets.SUPABASE_DB_PASSWORD }}" ]; then
+            echo "::notice::本番の Supabase の設定がまだないため、反映をスキップします"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: supabase/setup-cli@v3
+        if: steps.settings.outputs.ready == 'true'
+        with:
+          version: latest
+
+      - name: Push migrations
+        if: steps.settings.outputs.ready == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db push
