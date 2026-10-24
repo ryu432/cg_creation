@@ -2,6 +2,7 @@
 # 「他人のデータを読めない・書けない」ことを毎回確かめ、失敗したら本番には反映しない。
 # 本番の Supabase の設定（SUPABASE_PROJECT_REF・SUPABASE_ACCESS_TOKEN・SUPABASE_DB_PASSWORD）があれば、
 # テストが通ったあとに本番のデータベースへ反映する。
+# 手動で動かすときは「check」（反映せずに、つながるか・何が反映されるかだけ確かめる）を選べる。
 name: Supabase DB
 
 on:
@@ -10,12 +11,17 @@ on:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'supabase/config.toml'
-      - '.github/workflows/supabase-db.yml'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check = 反映せずに確かめるだけ / deploy = 本番に反映'
+        type: choice
+        options: [check, deploy]
+        default: check
 
 env:
   # Supabase のプロジェクト ID（Project Settings > General の Project ID）。秘密の情報ではない
-  SUPABASE_PROJECT_REF: ''
+  SUPABASE_PROJECT_REF: 'tvcfakqhqehvkionqyna'
 
 jobs:
   test:
@@ -59,6 +65,13 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          # 手動で check を選んだときは、反映せずに表示だけ（--dry-run）
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase db push
+          if [ "$MODE" = "check" ]; then
+            echo "::notice::確かめるだけ（反映はしません）"
+            supabase db push --dry-run
+          else
+            supabase db push
+          fi
